@@ -1,0 +1,5 @@
+model,top_k,temperature,calls,errors,accuracy,stability,mean_output_tokens,parse_rate,greedy_match
+open_weight_pequeno,,0.0,50,0,1.0,1.0,7.0,1.0,
+open_weight_pequeno,1,0.7,50,0,1.0,1.0,7.0,1.0,1.0
+open_weight_pequeno,5,0.7,50,0,1.0,1.0,7.0,1.0,
+open_weight_pequeno,40,0.7,50,0,0.98,0.9800000000000001,7.0,1.0,
