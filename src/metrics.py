@@ -52,5 +52,10 @@ def total_cost(records: list[dict]) -> float:
     return sum(_values(records, "cost_usd"))
 
 
+def format_compliance(records: list[dict]) -> float:
+    """Parte de respuestas con JSON válido y categoría dentro del enum (independiente de si es la correcta)."""
+    return sum(1 for r in records if r["valid_schema"]) / len(records)
+
+
 def parse_rate(records: list[dict]) -> float:
     return sum(1 for r in records if r["parse_ok"]) / len(records)
