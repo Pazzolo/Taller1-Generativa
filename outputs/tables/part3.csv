@@ -1,0 +1,5 @@
+model,prompt_variant,calls,errors,accuracy,format_compliance,parse_rate,input_tokens_mean,output_tokens_mean,cost_input_usd,cost_output_usd,cost_usd_total
+propietario_economico,zero_shot,50,0,1.0,1.0,1.0,57.1,6.0,0.00042825000000000014,0.0001800000000000002,0.0006082500000000004
+propietario_economico,few_shot,50,0,1.0,1.0,1.0,133.1,6.0,0.0009982500000000004,0.0001800000000000002,0.00117825
+propietario_economico,cot,50,0,1.0,1.0,1.0,82.1,133.56,0.00061575,0.0040068000000000005,0.0046225500000000004
+propietario_economico,structured,50,0,1.0,1.0,1.0,80.1,5.0,0.00060075,0.00015000000000000001,0.0007507500000000001
