@@ -1,10 +1,11 @@
 PRICES = {
+    # Sustituye a claude-opus-4-8 de la tabla del curso; precio de developers.openai.com/api/docs/pricing (<272K contexto), no de la tabla del curso.
     "propietario_grande": {
-        "provider": "anthropic",
-        "model_id": "claude-opus-4-8",
+        "provider": "openai",
+        "model_id": "gpt-5.5",
         "input_per_million": 5.0,
-        "output_per_million": 25.0,
-        "verified_at": "2026-07-10",
+        "output_per_million": 30.0,
+        "verified_at": "2026-09-19",
     },
     "propietario_balanceado": {
         "provider": "anthropic",
@@ -19,6 +20,13 @@ PRICES = {
         "input_per_million": 0.15,
         "output_per_million": 0.60,
         "verified_at": "2026-08-26",
+    },
+    "open_weight_pequeno": {
+        "provider": "ollama",
+        "model_id": "qwen3:1.7b",
+        "input_per_million": 0.0,
+        "output_per_million": 0.0,
+        "verified_at": "n/a (local, sin precio por token)",
     },
     "openai_razonamiento": {
         "provider": "openai",
