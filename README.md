@@ -28,6 +28,7 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 │   ├── pricing.py            # precios con fecha de verificación, cost_usd()
 │   ├── aggregation.py        # tabla de la Parte 1 desde results.jsonl
 │   ├── exposure.py           # Parte 2.a: valores extremos, clasificación y tabla de la matriz
+│   ├── sweeps.py             # Parte 2.b: celdas de los barridos, tablas y comprobación top_k=1 vs greedy
 │   ├── models/               # ModelRunner (base), MockRunner, runners OpenAI / Anthropic / Ollama, registry
 │   └── experiments/          # part0 ... part4b, uno por parte del taller
 ├── scripts/
@@ -134,6 +135,28 @@ Resultados actuales (2026-09-19, `outputs/tables/part2a.csv`):
 
 `gpt-5.5` acepta solo los valores por defecto (`temperature=1`, `top_p=1.0`): los valores no predeterminados fallan con `Only the default (1) value is supported` o `not supported with this model`.
 
+### Parte 2.b — barrido de decoding
+
+```bash
+uv run -m src.experiments.part2b --dry-run      # llamadas planificadas, ya hechas y costo estimado; no llama a la API
+uv run -m src.experiments.part2b                # ambos barridos
+uv run -m src.experiments.part2b --sweep topk   # solo top_k (qwen3:1.7b, local)
+uv run -m src.experiments.part2b --limit-cases 1 --runs 1   # piloto
+```
+
+- **temperature × top_p** sobre `gpt-4o-mini`: temperature {0, 0.3, 0.7, 1.0, 1.5} × top_p {0.5, 0.9, 1.0} = 15 celdas × 10 casos × 5 corridas = 750 llamadas. Se eligió `gpt-4o-mini` porque la Parte 2.a mostró que acepta ambos parámetros y que actúan.
+- **top_k** sobre `qwen3:1.7b` (la API de OpenAI lo rechaza): top_k {1, 5, 40} con temperature 0.7, más un baseline greedy (temperature 0) = 4 celdas × 10 casos × 5 corridas = 200 llamadas.
+- Se limita la salida a 128 tokens para cortar una posible degeneración a temperatura alta; la respuesta correcta ocupa unos 7. Es una condición del experimento, así que los tokens de salida medios están acotados por ese tope.
+- Es reanudable: una llamada ya registrada como `ok` con los mismos parámetros se omite, así que interrumpir y repetir no vuelve a cobrar. Las llamadas con error se reintentan.
+- **Definiciones** (`src/metrics.py`): exactitud = aciertos / todas las llamadas de la celda (los errores cuentan como fallo); estabilidad = por caso, parte de las corridas que coinciden con la respuesta más frecuente, promediada entre los 10 casos (una salida inválida cuenta como una sola respuesta; los errores se excluyen). `greedy_match` = parte de casos donde las 5 corridas con top_k=1 dan exactamente la salida del baseline greedy.
+
+Resultados (2026-09-19, `outputs/tables/part2b_decoding.csv` y `part2b_topk.csv`; 950 llamadas, 0 errores, costo $0.0091):
+
+- **temperature × top_p, `gpt-4o-mini`:** exactitud 1.00, estabilidad 1.00 y `parse_rate` 1.00 en las 15 celdas. La salida de cada caso fue idéntica en todas las corridas y celdas. Única excepción: con temperature 1.5 y top_p 1.0, una salida salió como JSON compacto sin espacio (`{"category":"billing"}`, 5 tokens en vez de 6), con la misma categoría.
+- **top_k, `qwen3:1.7b`:** exactitud 1.00 y estabilidad 1.00 con el baseline greedy, top_k=1 y top_k=5. Con top_k=40, exactitud y estabilidad 0.98: un fallo en 50 llamadas (`case_10`, corrida 5: respondió `technical` en vez de `billing`). `greedy_match` con top_k=1 es 1.00: los 10 casos reproducen exactamente la salida greedy.
+
+Lectura: en esta tarea, las palancas de muestreo no producen ningún efecto medible en exactitud ni estabilidad. La Parte 2.a ya mostró que los parámetros sí actúan sobre texto libre; aquí la decisión es un solo token de categoría con masa de probabilidad muy concentrada, así que ni siquiera temperature 1.5 lo altera. Las dos desviaciones son eventos únicos en los ajustes más permisivos: coinciden con el sentido esperado, pero con n=50 por celda no bastan para hablar de tendencia.
+
 ### Pruebas
 
 ```bash
@@ -153,7 +176,7 @@ Milestones 1 a 4 completos. Los demás experimentos aún no están implementados
 - [x] Milestone 2 — un modelo real (gpt-4o-mini) conectado y `results.jsonl` verificado (62 tests)
 - [x] Milestone 3 — Parte 1: comparación de tres modelos (gpt-5.5, gpt-4o-mini, qwen3:1.7b)
 - [x] Milestone 4 — Parte 2.a: matriz de exposición de parámetros (3 modelos × 3 parámetros)
-- [ ] Milestone 5 — Parte 2.b: barrido de temperature × top-p
+- [x] Milestone 5 — Parte 2.b: barrido de temperature × top-p y de top-k (950 llamadas)
 - [ ] Milestone 6 — Parte 3: prompting estructurado
 - [ ] Milestone 7 — Parte 0: GPT-2 base
 - [ ] Milestone 8 — Parte 4.a: reasoning effort
