@@ -15,11 +15,19 @@ class OllamaError(Exception):
 
 
 class OllamaRunner(ModelRunner):
-    def __init__(self, model_name: str, host: str | None = None, think: bool = False, timeout: float = 300):
+    def __init__(
+        self,
+        model_name: str,
+        host: str | None = None,
+        think: bool = False,
+        timeout: float = 300,
+        max_output_tokens: int | None = None,
+    ):
         self.model_name = model_name
         self.host = (host or os.environ.get("OLLAMA_HOST") or DEFAULT_HOST).rstrip("/")
         self.think = think
         self.timeout = timeout
+        self.max_output_tokens = max_output_tokens
 
     def generate(
         self,
@@ -40,6 +48,9 @@ class OllamaRunner(ModelRunner):
             options["top_p"] = top_p
         if top_k is not None:
             options["top_k"] = top_k
+
+        if self.max_output_tokens is not None:
+            options["num_predict"] = self.max_output_tokens
 
         payload = {
             "model": self.model_name,

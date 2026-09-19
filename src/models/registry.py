@@ -11,6 +11,6 @@ RUNNERS = {
 }
 
 
-def get_runner(model_key: str) -> ModelRunner:
+def get_runner(model_key: str, **kwargs) -> ModelRunner:
     price = PRICES[model_key]
-    return RUNNERS[price["provider"]](price["model_id"])
+    return RUNNERS[price["provider"]](price["model_id"], **kwargs)

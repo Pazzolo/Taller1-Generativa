@@ -5,7 +5,7 @@ from src.models.base import ModelRunner
 
 
 class OpenAIRunner(ModelRunner):
-    def __init__(self, model_name: str, client=None):
+    def __init__(self, model_name: str, client=None, max_output_tokens: int | None = None):
         if client is None:
             if not os.environ.get("OPENAI_API_KEY"):
                 raise RuntimeError("OPENAI_API_KEY no está definida; copiar .env.example a .env y completarla.")
@@ -14,6 +14,7 @@ class OpenAIRunner(ModelRunner):
             client = OpenAI()
         self._client = client
         self.model_name = model_name
+        self.max_output_tokens = max_output_tokens
 
     def generate(
         self,
@@ -35,6 +36,9 @@ class OpenAIRunner(ModelRunner):
         if top_k is not None:
             # El SDK no acepta top_k; va en el cuerpo para que la API decida si lo rechaza.
             params["extra_body"] = {"top_k": top_k}
+
+        if self.max_output_tokens is not None:
+            params["max_completion_tokens"] = self.max_output_tokens
 
         start = time.perf_counter()
         response = self._client.chat.completions.create(
