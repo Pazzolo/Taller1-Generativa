@@ -40,12 +40,13 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 ├── scripts/
 │   ├── run_all.py            # --part <0|1|2a|2b|3|4a|4b> | --all
 │   ├── aggregate_results.py  # tablas desde results.jsonl
-│   └── generate_plots.py     # gráficas desde results.jsonl
+│   ├── generate_plots.py     # gráficas de la Parte 4 desde results.jsonl
+│   └── build_report.py       # genera report/report.md desde report_template.md y los resultados
 ├── outputs/
 │   ├── raw/                  # results.jsonl (fuente de verdad, no versionado)
 │   ├── tables/
 │   └── plots/
-├── report/                   # report.md y figuras
+├── report/                   # report_template.md (texto), report.md (generado), part1_notes.json
 ├── tests/                    # pytest: verificador, dataset, pipeline con mock, precios
 └── notebooks/
 ```
@@ -294,19 +295,29 @@ Modelo `gpt-5.6-luna`, mismo prompt base que la Parte 1, 10 corridas por celda p
 
 Costo total de la Parte 4.b: $0.003.
 
+### Informe
+
+```bash
+uv run scripts/build_report.py     # report/report_template.md -> report/report.md
+```
+
+El informe (`report/report.md`, 14 secciones más las respuestas de la Parte 5) **se genera**: el texto vive en `report/report_template.md` y cada número o tabla es una marca (`[[clave]]`, `[[tabla:nombre]]`) que el script rellena desde `outputs/tables/*.csv`, `outputs/raw/part0*.json` y `results.jsonl`, de modo que ninguna cifra se copia a mano. Para cambiar el texto se edita la plantilla, no `report.md`. El script falla si queda una marca sin resolver o si la respuesta 1 de la Parte 5 se sale de 100-150 palabras. Como usa `results.jsonl`, que no se versiona, hay que haber corrido los experimentos antes.
+
+Es un borrador: hay que completar el nombre, editar el texto a la voz propia y declarar la asistencia de IA si la política del curso lo pide (hay un recordatorio en un comentario al inicio de la plantilla).
+
 ### Pruebas
 
 ```bash
 uv run pytest
 ```
 
-Cubren el verificador (correcto, incorrecto, fuera del enum, no parseable, JSON que no es objeto), las reglas del dataset (10 casos oficiales, ids únicos, categorías válidas y cubiertas), el pipeline de `part1` con un mock y el cálculo de costos.
+Cubren el verificador, las reglas de los tres conjuntos de casos, `run_case` y el registro JSONL, cada runner con clientes falsos (sin red), las tablas de todas las partes, la reanudación de barridos (las claves planificadas deben coincidir con las filas que se escriben), las definiciones de top-k / top-p frente a `transformers`, las salidas guardadas de la Parte 0 y la generación del informe. Los tests que dependen de archivos generados se omiten si no existen.
 
 El dataset oficial queda congelado: los 10 casos con `"split": "official"` no cambian entre modelos, temperaturas ni variantes de prompt. Los de `"split": "debug"` son solo para pruebas internas.
 
 ## Estado
 
-Milestones 1 a 4 completos. Los demás experimentos aún no están implementados: cada `partX.py` (salvo `part1`) lanza `NotImplementedError` con el milestone que le corresponde.
+Los 10 milestones están completos. Pendiente solo lo que depende de quien entrega: completar el nombre en el informe, editarlo a la voz propia y contrastar con la tabla del curso los precios de `gpt-5.5` y del modelo local (el PDF del enunciado ya no está en la carpeta).
 
 - [x] Estructura del proyecto, `config`, `schemas`, `verifier`, `pricing`, `build_base_prompt`, interfaz `ModelRunner`
 - [x] Milestone 1 — `data/cases.json` + verificador + pruebas (41 tests)
@@ -316,9 +327,9 @@ Milestones 1 a 4 completos. Los demás experimentos aún no están implementados
 - [x] Milestone 5 — Parte 2.b: barrido de temperature × top-p y de top-k (950 llamadas)
 - [x] Milestone 6 — Parte 3: prompting estructurado (4 variantes, 200 llamadas)
 - [x] Milestone 7 — Parte 0: GPT-2 base (0.a, 0.b y 0.c, 4 figuras)
-- [x] Milestone 8 — Parte 4.a: reasoning effort (5 niveles + control, 165 llamadas)
+- [x] Milestone 8 — Parte 4.a: reasoning effort (5 niveles + control; 166 filas, una es el rechazo de `max`)
 - [x] Milestone 9 — Parte 4.b: casos contaminados (3 casos × 3 niveles × 10 corridas)
-- [ ] Milestone 10 — agregación, gráficas y reporte
+- [x] Milestone 10 — agregación, gráficas e informe (`report/report.md`)
 
 ## Convenciones de commits
 
