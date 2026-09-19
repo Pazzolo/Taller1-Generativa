@@ -32,7 +32,7 @@ def test_temperature_and_top_p_are_forwarded_when_set():
     assert call["top_p"] == 0.9
 
 
-@pytest.mark.parametrize("kwargs", [{"effort": "low"}, {"structured_schema": {}}])
+@pytest.mark.parametrize("kwargs", [{"effort": "low"}])
 def test_unsupported_parameters_fail_loudly_instead_of_being_dropped(kwargs):
     client = FakeOpenAIClient()
     with pytest.raises(NotImplementedError):
@@ -57,3 +57,21 @@ def test_top_k_is_sent_in_extra_body_so_the_api_can_reject_it():
     (call,) = client.calls
     assert call["extra_body"] == {"top_k": 5}
     assert "top_k" not in call
+
+
+def test_structured_schema_is_sent_as_strict_json_schema_response_format():
+    from src.schemas import CATEGORY_SCHEMA
+
+    client = FakeOpenAIClient()
+    OpenAIRunner("gpt-4o-mini", client=client).generate("hello", structured_schema=CATEGORY_SCHEMA)
+    (call,) = client.calls
+    assert call["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {"name": "ticket_category", "strict": True, "schema": CATEGORY_SCHEMA},
+    }
+
+
+def test_no_response_format_without_a_schema():
+    client = FakeOpenAIClient()
+    OpenAIRunner("gpt-4o-mini", client=client).generate("hello")
+    assert "response_format" not in client.calls[0]

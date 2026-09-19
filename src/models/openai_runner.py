@@ -25,8 +25,8 @@ class OpenAIRunner(ModelRunner):
         effort: str | None = None,
         structured_schema: dict | None = None,
     ) -> dict:
-        if effort is not None or structured_schema is not None:
-            raise NotImplementedError("OpenAIRunner no soporta effort ni structured_schema todavía.")
+        if effort is not None:
+            raise NotImplementedError("OpenAIRunner no soporta effort todavía.")
 
         params = {}
         if temperature is not None:
@@ -37,6 +37,11 @@ class OpenAIRunner(ModelRunner):
             # El SDK no acepta top_k; va en el cuerpo para que la API decida si lo rechaza.
             params["extra_body"] = {"top_k": top_k}
 
+        if structured_schema is not None:
+            params["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "ticket_category", "strict": True, "schema": structured_schema},
+            }
         if self.max_output_tokens is not None:
             params["max_completion_tokens"] = self.max_output_tokens
 
