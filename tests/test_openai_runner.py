@@ -32,7 +32,7 @@ def test_temperature_and_top_p_are_forwarded_when_set():
     assert call["top_p"] == 0.9
 
 
-@pytest.mark.parametrize("kwargs", [{"top_k": 5}, {"effort": "low"}, {"structured_schema": {}}])
+@pytest.mark.parametrize("kwargs", [{"effort": "low"}, {"structured_schema": {}}])
 def test_unsupported_parameters_fail_loudly_instead_of_being_dropped(kwargs):
     client = FakeOpenAIClient()
     with pytest.raises(NotImplementedError):
@@ -49,3 +49,11 @@ def test_missing_api_key_gives_clear_error(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
         OpenAIRunner("gpt-4o-mini")
+
+
+def test_top_k_is_sent_in_extra_body_so_the_api_can_reject_it():
+    client = FakeOpenAIClient()
+    OpenAIRunner("gpt-4o-mini", client=client).generate("hello", top_k=5)
+    (call,) = client.calls
+    assert call["extra_body"] == {"top_k": 5}
+    assert "top_k" not in call

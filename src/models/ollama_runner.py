@@ -30,14 +30,16 @@ class OllamaRunner(ModelRunner):
         effort: str | None = None,
         structured_schema: dict | None = None,
     ) -> dict:
-        if top_k is not None or effort is not None or structured_schema is not None:
-            raise NotImplementedError("OllamaRunner solo soporta temperature y top_p por ahora.")
+        if effort is not None or structured_schema is not None:
+            raise NotImplementedError("OllamaRunner no soporta effort ni structured_schema.")
 
         options = {}
         if temperature is not None:
             options["temperature"] = temperature
         if top_p is not None:
             options["top_p"] = top_p
+        if top_k is not None:
+            options["top_k"] = top_k
 
         payload = {
             "model": self.model_name,

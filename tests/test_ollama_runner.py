@@ -51,6 +51,12 @@ def test_temperature_and_top_p_go_in_options(posts):
     assert calls[0]["json"]["options"] == {"temperature": 0.0, "top_p": 0.9}
 
 
+def test_top_k_goes_in_options(posts):
+    calls = posts(ollama_ok())
+    OllamaRunner("m").generate("hello", top_k=40)
+    assert calls[0]["json"]["options"] == {"top_k": 40}
+
+
 def test_host_comes_from_env_then_default(posts, monkeypatch):
     monkeypatch.setenv("OLLAMA_HOST", "http://from-env:1")
     assert OllamaRunner("m").host == "http://from-env:1"
@@ -84,7 +90,7 @@ def test_connection_error_propagates_for_the_runner_to_log(posts):
         OllamaRunner("m").generate("hello")
 
 
-@pytest.mark.parametrize("kwargs", [{"top_k": 5}, {"effort": "low"}, {"structured_schema": {}}])
+@pytest.mark.parametrize("kwargs", [{"effort": "low"}, {"structured_schema": {}}])
 def test_unsupported_parameters_fail_loudly(posts, kwargs):
     calls = posts(ollama_ok())
     with pytest.raises(NotImplementedError):

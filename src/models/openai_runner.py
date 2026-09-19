@@ -24,14 +24,17 @@ class OpenAIRunner(ModelRunner):
         effort: str | None = None,
         structured_schema: dict | None = None,
     ) -> dict:
-        if top_k is not None or effort is not None or structured_schema is not None:
-            raise NotImplementedError("OpenAIRunner solo soporta temperature y top_p por ahora.")
+        if effort is not None or structured_schema is not None:
+            raise NotImplementedError("OpenAIRunner no soporta effort ni structured_schema todavía.")
 
         params = {}
         if temperature is not None:
             params["temperature"] = temperature
         if top_p is not None:
             params["top_p"] = top_p
+        if top_k is not None:
+            # El SDK no acepta top_k; va en el cuerpo para que la API decida si lo rechaza.
+            params["extra_body"] = {"top_k": top_k}
 
         start = time.perf_counter()
         response = self._client.chat.completions.create(
