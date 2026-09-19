@@ -19,6 +19,8 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 ├── data/                     # cases.json: 10 casos oficiales + 5 de debug (campo "split")
 ├── src/
 │   ├── config.py             # rutas, SEED, categorías permitidas
+│   ├── runner.py             # run_case(): prompt -> modelo -> verificador -> costo -> JSONL
+│   ├── results.py            # append_result() / read_results() sobre results.jsonl
 │   ├── schemas.py            # Case, Expected, CATEGORY_SCHEMA, load_cases()
 │   ├── prompts.py            # build_base_prompt() y variantes de prompting
 │   ├── verifier.py           # verify_prediction(): parseo + exactitud
@@ -68,7 +70,17 @@ uv run -m src.experiments.part1        # equivalente a la primera
 
 Los experimentos escriben una fila por llamada en `outputs/raw/results.jsonl`. Las tablas y gráficas se derivan de ese archivo, nunca se copian a mano.
 
-Por ahora `part1` corre sobre un `MockRunner` (sin red, sin costo) y solo imprime el resultado por caso.
+`part1` acepta `--model` y `--limit`:
+
+```bash
+uv run -m src.experiments.part1                                        # mock: sin red ni costo
+uv run -m src.experiments.part1 --model propietario_economico --limit 1  # 1 caso real (gpt-4o-mini)
+uv run -m src.experiments.part1 --model propietario_economico            # los 10 casos oficiales
+```
+
+Con `--model mock` los resultados van a `outputs/raw/mock_results.jsonl`; con un modelo real, a `outputs/raw/results.jsonl`. Ambos están ignorados por git. Las llamadas reales requieren `OPENAI_API_KEY` en `.env`; empezar siempre con `--limit 1`.
+
+Cada llamada, exitosa o fallida, agrega una línea al JSONL (nunca se sobrescribe). Las fallas de API se registran con `status: "error"`, el mensaje literal y el `http_status`.
 
 ### Pruebas
 
@@ -82,11 +94,11 @@ El dataset oficial queda congelado: los 10 casos con `"split": "official"` no ca
 
 ## Estado
 
-Milestone 1 completo. Los demás experimentos aún no están implementados: cada `partX.py` (salvo `part1`, que corre sobre un mock) lanza `NotImplementedError` con el milestone que le corresponde.
+Milestones 1 y 2 completos. Los demás experimentos aún no están implementados: cada `partX.py` (salvo `part1`) lanza `NotImplementedError` con el milestone que le corresponde.
 
 - [x] Estructura del proyecto, `config`, `schemas`, `verifier`, `pricing`, `build_base_prompt`, interfaz `ModelRunner`
 - [x] Milestone 1 — `data/cases.json` + verificador + pruebas (41 tests)
-- [ ] Milestone 2 — un modelo real conectado y `results.jsonl` correcto
+- [x] Milestone 2 — un modelo real (gpt-4o-mini) conectado y `results.jsonl` verificado (62 tests)
 - [ ] Milestone 3 — Parte 1: comparación de tres modelos
 - [ ] Milestone 4 — Parte 2.a: matriz de exposición de parámetros
 - [ ] Milestone 5 — Parte 2.b: barrido de temperature × top-p
