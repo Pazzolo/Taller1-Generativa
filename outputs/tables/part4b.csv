@@ -1,0 +1,10 @@
+case_id,trap,effort,runs,errors,expected,correct_rate,predictions,reasoning_tokens_mean,reasoning_tokens_max,output_tokens_mean
+contaminated_01,distraction,low,10,0,account,1.0,account:10,0.0,0,8.0
+contaminated_01,distraction,high,10,0,account,1.0,account:10,1.6,16,10.2
+contaminated_01,distraction,xhigh,10,0,account,1.0,account:10,4.3,18,14.1
+contaminated_02,misleading_frame,low,10,0,billing,1.0,billing:10,0.0,0,8.0
+contaminated_02,misleading_frame,high,10,0,billing,1.0,billing:10,4.5,9,16.1
+contaminated_02,misleading_frame,xhigh,10,0,billing,1.0,billing:10,7.8,19,20.6
+contaminated_03,spurious_correlation,low,10,0,technical,1.0,technical:10,0.0,0,8.0
+contaminated_03,spurious_correlation,high,10,0,technical,1.0,technical:10,9.2,19,20.2
+contaminated_03,spurious_correlation,xhigh,10,0,technical,1.0,technical:10,22.2,28,35.6
