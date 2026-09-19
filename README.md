@@ -26,7 +26,8 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 │   ├── verifier.py           # verify_prediction(): parseo + exactitud
 │   ├── metrics.py            # métricas centralizadas
 │   ├── pricing.py            # precios con fecha de verificación, cost_usd()
-│   ├── models/               # ModelRunner (base), MockRunner + runners OpenAI / Ollama / Transformers
+│   ├── aggregation.py        # tabla de la Parte 1 desde results.jsonl
+│   ├── models/               # ModelRunner (base), MockRunner, runners OpenAI / Anthropic / Ollama, registry
 │   └── experiments/          # part0 ... part4b, uno por parte del taller
 ├── scripts/
 │   ├── run_all.py            # --part <0|1|2a|2b|3|4a|4b> | --all
@@ -43,10 +44,7 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 
 ## Puesta en marcha
 
-Requiere Python 3.11 o 3.12.
-
-```bash
-El entorno se gestiona con [uv](https://docs.astral.sh/uv/).
+Requiere Python 3.11 o 3.12. El entorno se gestiona con [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv venv --python 3.11
@@ -76,7 +74,24 @@ Los experimentos escriben una fila por llamada en `outputs/raw/results.jsonl`. L
 uv run -m src.experiments.part1                                        # mock: sin red ni costo
 uv run -m src.experiments.part1 --model propietario_economico --limit 1  # 1 caso real (gpt-4o-mini)
 uv run -m src.experiments.part1 --model propietario_economico            # los 10 casos oficiales
+uv run -m src.experiments.part1 --model propietario_grande               # gpt-5.5 (OpenAI)
+uv run -m src.experiments.part1 --model open_weight_pequeno              # qwen3:1.7b (Ollama local)
+uv run scripts/aggregate_results.py                                      # outputs/tables/part1.csv
 ```
+
+Modelos de la Parte 1:
+
+| Clave | Modelo | Requisito |
+|---|---|---|
+| `propietario_grande` | `gpt-5.5` | `OPENAI_API_KEY` en `.env` |
+| `propietario_economico` | `gpt-4o-mini` | `OPENAI_API_KEY` en `.env` |
+| `open_weight_pequeno` | `qwen3:1.7b` | Ollama en ejecución (`OLLAMA_HOST`) y `ollama pull qwen3:1.7b` |
+
+`propietario_grande` usa `gpt-5.5` en lugar del `claude-opus-4-8` de la tabla del curso (no había clave de Anthropic). Es un modelo de razonamiento: sus tokens de razonamiento se facturan como salida. Su precio ($5 / $30 por 1M, verificado el 2026-09-19) viene de la página de precios de OpenAI, no de la tabla del curso.
+
+Para `qwen3:1.7b` el razonamiento se desactiva (`think: false`) para que compare como un modelo instruct normal. La latencia de la primera llamada incluye la carga del modelo en memoria (`load_duration` queda en `raw_response`).
+
+La tabla toma la última fila por modelo y caso, así una corrida de humo previa no cuenta doble. Las llamadas fallidas cuentan como incorrectas en la exactitud pero no en latencia ni tokens. La columna `qualitative_notes` se completa a mano.
 
 Con `--model mock` los resultados van a `outputs/raw/mock_results.jsonl`; con un modelo real, a `outputs/raw/results.jsonl`. Ambos están ignorados por git. Las llamadas reales requieren `OPENAI_API_KEY` en `.env`; empezar siempre con `--limit 1`.
 
@@ -94,12 +109,12 @@ El dataset oficial queda congelado: los 10 casos con `"split": "official"` no ca
 
 ## Estado
 
-Milestones 1 y 2 completos. Los demás experimentos aún no están implementados: cada `partX.py` (salvo `part1`) lanza `NotImplementedError` con el milestone que le corresponde.
+Milestones 1 y 2 completos; Milestone 3 pendiente de la corrida de `qwen3:1.7b`. Los demás experimentos aún no están implementados: cada `partX.py` (salvo `part1`) lanza `NotImplementedError` con el milestone que le corresponde.
 
 - [x] Estructura del proyecto, `config`, `schemas`, `verifier`, `pricing`, `build_base_prompt`, interfaz `ModelRunner`
 - [x] Milestone 1 — `data/cases.json` + verificador + pruebas (41 tests)
 - [x] Milestone 2 — un modelo real (gpt-4o-mini) conectado y `results.jsonl` verificado (62 tests)
-- [ ] Milestone 3 — Parte 1: comparación de tres modelos
+- [ ] Milestone 3 — Parte 1: comparación de tres modelos (2 de 3 modelos corridos: gpt-5.5 y gpt-4o-mini; falta `qwen3:1.7b` con Ollama)
 - [ ] Milestone 4 — Parte 2.a: matriz de exposición de parámetros
 - [ ] Milestone 5 — Parte 2.b: barrido de temperature × top-p
 - [ ] Milestone 6 — Parte 3: prompting estructurado
