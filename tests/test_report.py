@@ -48,8 +48,16 @@ def test_report_has_the_fourteen_sections_in_order(built):
 
 def test_report_does_not_leak_raw_identifiers_or_ai_tells(built):
     _, _, text = built
+    prose = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text)  # las rutas de las figuras sí llevan estos nombres
     for banned in ("high_confidence", "accepted_and_acts", "misleading_frame", "Asimismo", "Cabe destacar", "Por consiguiente", "En síntesis"):
-        assert banned not in text.replace("`part0_temperature_high_confidence.png`", "")
+        assert banned not in prose
+
+
+def test_every_embedded_figure_exists(built):
+    _, _, text = built
+    paths = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", text)
+    assert len(paths) == 6
+    assert all((ROOT / "report" / p).resolve().exists() for p in paths)
 
 
 def test_no_api_key_shaped_string_in_the_report(built):

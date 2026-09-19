@@ -3,6 +3,7 @@
 Cada número del informe sale de outputs/tables/*.csv, outputs/raw/part0*.json y results.jsonl:
 la plantilla solo contiene texto y marcas [[clave]] / [[tabla:nombre]].
 """
+import argparse
 import csv
 import json
 import re
@@ -252,13 +253,20 @@ def q1_word_count(text: str) -> int:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Genera report/report.md desde la plantilla.")
+    parser.add_argument("--author", help="nombre del estudiante (reemplaza [nombre] en la portada)")
+    args = parser.parse_args()
+
     values, tables = build_values()
     text = render(TEMPLATE.read_text(encoding="utf-8"), values, tables)
     leftovers = re.findall(r"\[\[[^\]]+\]\]", text)
     assert not leftovers, f"marcas sin resolver: {leftovers}"
     words = q1_word_count(text)
     assert Q1_WORDS[0] <= words <= Q1_WORDS[1], f"la respuesta 1 tiene {words} palabras (límite {Q1_WORDS})"
-    OUTPUT.write_text(text.replace("<!--Q1-->\n", "").replace("\n<!--/Q1-->", ""), encoding="utf-8")
+    text = text.replace("<!--Q1-->\n", "").replace("\n<!--/Q1-->", "")
+    if args.author:
+        text = text.replace("[nombre]", args.author)
+    OUTPUT.write_text(text, encoding="utf-8")
     print(f"report/report.md generado: {len(text.split())} palabras en total; respuesta 1: {words} palabras")
 
 

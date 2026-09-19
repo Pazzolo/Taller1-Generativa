@@ -52,18 +52,34 @@ Hay tres desviaciones que conviene declarar. Primero, la tabla del curso asigna 
 
 [[tabla:prefijos]]
 
-**0.a — temperatura.** La entropía y el tamaño del núcleo top-p 0.9 crecen con la temperatura en los dos prefijos (figuras `part0_temperature_high_confidence.png`, `part0_temperature_low_confidence.png` y `part0_entropy_vs_temperature.png`).
+**0.a — temperatura.** La entropía y el tamaño del núcleo top-p 0.9 crecen con la temperatura en los dos prefijos (Figuras 1 a 3).
 
 [[tabla:part0a]]
 
 El prefijo seguro se comporta casi como una decisión determinista hasta T=1 y solo se abre a partir de T=1.5; el incierto ya es amplio desde T=0.7. A T=2 ambos se acercan al máximo posible (el vocabulario tiene 50 257 tokens, unos 15.6 bits).
 
+![Figura 1](../outputs/plots/part0_temperature_high_confidence.png)
+
+*Figura 1. Probabilidad de los 15 tokens más probables para el prefijo «[[chosen_prefix]]», una barra por temperatura. La leyenda da la probabilidad del primer token, la entropía y el tamaño del núcleo top-p 0.9.*
+
+![Figura 2](../outputs/plots/part0_temperature_low_confidence.png)
+
+*Figura 2. Lo mismo para el prefijo del dominio, «A customer support ticket about an unexpected».*
+
+![Figura 3](../outputs/plots/part0_entropy_vs_temperature.png)
+
+*Figura 3. Entropía de la distribución del siguiente token según la temperatura, para los dos prefijos.*
+
 **0.b — las tres palancas** (prefijo `[[gen_prefix]]`, 40 tokens nuevos):
 
 1. Con `do_sample=False` y temperature 0.2 o 1.5, la salida es **[[t1_identical]]** entre las dos y respecto de greedy: la temperatura se ignora. La librería lo avisa: «[[t1_warning]]».
 2. Con `top_k=1` y muestreo activado, cinco corridas con semillas [[t2_seeds]] dan salidas **[[t2_identical]]** y **[[t2_greedy]]**.
-3. Con top-k=5 y top-p=0.9 sobre la misma distribución (T=1) sobreviven conjuntos distintos, y en sentido contrario según la confianza del modelo: en el prefijo seguro top-k conserva **[[k_high]]** tokens y top-p **[[p_high]]**; en el incierto, top-k conserva **[[k_low]]** y top-p **[[p_low]]**. Top-k corta por cantidad fija; top-p se adapta a cuánta masa hay concentrada (figura `part0_topk_vs_topp.png`, en escala logarítmica porque con un token dominante el resto sería invisible).
+3. Con top-k=5 y top-p=0.9 sobre la misma distribución (T=1) sobreviven conjuntos distintos, y en sentido contrario según la confianza del modelo: en el prefijo seguro top-k conserva **[[k_high]]** tokens y top-p **[[p_high]]**; en el incierto, top-k conserva **[[k_low]]** y top-p **[[p_low]]**. Top-k corta por cantidad fija; top-p se adapta a cuánta masa hay concentrada (Figura 4, en escala logarítmica porque con un token dominante el resto sería invisible).
 4. Con greedy a [[loop_tokens]] tokens la generación entra en un bucle: la frase «The customer support ticket about an unexpected problem» aparece **[[loop_repeats]] veces**. La salida cruda, sin editar, está en `outputs/raw/part0b.json`.
+
+![Figura 4](../outputs/plots/part0_topk_vs_topp.png)
+
+*Figura 4. Qué tokens conservan el corte top-k=5 y el corte top-p=0.9 sobre la misma distribución (T=1), en un prefijo seguro (arriba) y en uno incierto (abajo). Escala logarítmica en el eje vertical.*
 
 Las definiciones de top-k y top-p que se usaron para contar los conjuntos se comprobaron contra los `TopKLogitsWarper` y `TopPLogitsWarper` de `transformers`, que son los que aplica `generate()`.
 
@@ -122,6 +138,16 @@ Modelo `openai_razonamiento` (`gpt-5.6-luna`), [[n_levels_4a]] niveles aceptados
 [[tabla:part4a]]
 
 Hay tres hallazgos. Primero, **`max` no existe para este modelo**: la tabla del curso lo lista, pero la API responde «[[max_message]]». Segundo, **la exactitud fue [[acc_min]] en todos los niveles**, así que el aumento de exactitud entre niveles es cero y el costo por punto de exactitud no está definido. Lo único que cambió fue el costo: `xhigh` cuesta [[xhigh_extra]] % más por llamada que `none`. Tercero, el modelo casi no razonó con estos tickets: solo **[[n_reasoned]] de [[n_sweep]] llamadas** usaron tokens de razonamiento, todas en `high` o `xhigh` y solo en los casos [[reasoned_cases]].
+
+Las Figuras 5 y 6 muestran esos resultados: en ambas la exactitud queda pegada al 100 % y lo único que se mueve es el eje horizontal (tokens de razonamiento, costo).
+
+![Figura 5](../outputs/plots/part4_accuracy_vs_reasoning_tokens.png)
+
+*Figura 5. Exactitud frente a tokens de razonamiento medios por nivel de esfuerzo: tickets a la izquierda y acertijo de control a la derecha. Los niveles con las mismas coordenadas comparten una sola marca.*
+
+![Figura 6](../outputs/plots/part4_cost_vs_accuracy.png)
+
+*Figura 6. Costo por llamada frente a exactitud en la clasificación de tickets. El eje vertical va de 0 a 1 para no exagerar diferencias.*
 
 Con un piloto de un caso los cinco niveles dieron cero tokens de razonamiento, y eso podía significar que el parámetro no hacía nada (como en la Parte 2.a). Antes de barrer se comprobó con un acertijo de control (el del bate y la pelota, 3 corridas por nivel):
 
