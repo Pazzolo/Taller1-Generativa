@@ -38,6 +38,16 @@ PRICES = {
 }
 
 
+def cost_breakdown(model_key: str, input_tokens: int | None, output_tokens: int | None) -> tuple[float, float] | None:
+    if input_tokens is None or output_tokens is None:
+        return None
+    price = PRICES[model_key]
+    return (
+        input_tokens / 1_000_000 * price["input_per_million"],
+        output_tokens / 1_000_000 * price["output_per_million"],
+    )
+
+
 def cost_usd(model_key: str, input_tokens: int | None, output_tokens: int | None) -> float | None:
     """output_tokens debe ser el total del proveedor (razonamiento + visibles)."""
     if input_tokens is None or output_tokens is None:
