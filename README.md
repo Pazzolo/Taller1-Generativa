@@ -80,6 +80,16 @@ uv run -m src.experiments.part1 --model open_weight_pequeno              # qwen3
 uv run scripts/aggregate_results.py                                      # outputs/tables/part1.csv y part2a.csv
 ```
 
+Resultados de la Parte 1 (10 casos oficiales, `outputs/tables/part1.csv`):
+
+| Modelo | Exactitud | Latencia media | Tokens de salida (media) | Costo total |
+|---|---|---|---|---|
+| `gpt-5.5` | 10/10 | 0.97 s | 23.1 (9-10 de razonamiento) | $0.0097 |
+| `gpt-4o-mini` | 10/10 | 0.70 s | 6.0 | $0.00012 |
+| `qwen3:1.7b` (local) | 10/10 | 0.15 s | 7.0 | $0 |
+
+Los tres aciertan todo con JSON válido, así que este problema no discrimina entre modelos (efecto techo). La latencia de `qwen3:1.7b` no incluye red y su costo 0 no cuenta el hardware, por lo que no es comparable directamente con las de pago.
+
 Modelos de la Parte 1:
 
 | Clave | Modelo | Requisito |
@@ -92,7 +102,7 @@ Modelos de la Parte 1:
 
 Para `qwen3:1.7b` el razonamiento se desactiva (`think: false`) para que compare como un modelo instruct normal. La latencia de la primera llamada incluye la carga del modelo en memoria (`load_duration` queda en `raw_response`).
 
-La tabla toma la última fila por modelo y caso, así una corrida de humo previa no cuenta doble. Las llamadas fallidas cuentan como incorrectas en la exactitud pero no en latencia ni tokens. La columna `qualitative_notes` se completa a mano.
+La tabla toma la última fila por modelo y caso, así una corrida de humo previa no cuenta doble. Las llamadas fallidas cuentan como incorrectas en la exactitud pero no en latencia ni tokens. La columna `qualitative_notes` sale de `report/part1_notes.json` (una nota por modelo, escrita a mano), para que no se pierda al regenerar la tabla.
 
 Con `--model mock` los resultados van a `outputs/raw/mock_results.jsonl`; con un modelo real, a `outputs/raw/results.jsonl`. Ambos están ignorados por git. Las llamadas reales requieren `OPENAI_API_KEY` en `.env`; empezar siempre con `--limit 1`.
 
@@ -102,7 +112,7 @@ Cada llamada, exitosa o fallida, agrega una línea al JSONL (nunca se sobrescrib
 
 ```bash
 uv run -m src.experiments.part2a --dry-run                               # cuántas llamadas, sin llamar a la API
-uv run -m src.experiments.part2a --models propietario_grande propietario_economico
+uv run -m src.experiments.part2a --models propietario_grande propietario_economico open_weight_pequeno
 ```
 
 Para cada modelo y parámetro se envía un valor bajo y uno alto (`temperature` 0.0 / 2.0, `top_p` 0.01 / 1.0, `top_k` 1 / 100), 5 corridas cada uno, con un prompt abierto (`probe`) donde el muestreo sí cambia la salida. Un HTTP 200 no basta para decir que el parámetro actúa; el estado se decide así:
@@ -120,7 +130,7 @@ Resultados actuales (2026-09-19, `outputs/tables/part2a.csv`):
 |---|---|---|---|
 | `gpt-4o-mini` | actúa (1 vs 5 salidas distintas) | actúa (1 vs 5) | rechazado, 400 |
 | `gpt-5.5` | rechazado, 400 | rechazado, 400 | rechazado, 400 |
-| `qwen3:1.7b` | pendiente (Ollama) | pendiente | pendiente |
+| `qwen3:1.7b` | actúa (1 vs 5) | actúa (1 vs 4) | actúa (1 vs 3) |
 
 `gpt-5.5` acepta solo los valores por defecto (`temperature=1`, `top_p=1.0`): los valores no predeterminados fallan con `Only the default (1) value is supported` o `not supported with this model`.
 
@@ -136,13 +146,13 @@ El dataset oficial queda congelado: los 10 casos con `"split": "official"` no ca
 
 ## Estado
 
-Milestones 1 y 2 completos; Milestone 3 pendiente de la corrida de `qwen3:1.7b`. Los demás experimentos aún no están implementados: cada `partX.py` (salvo `part1`) lanza `NotImplementedError` con el milestone que le corresponde.
+Milestones 1 a 4 completos. Los demás experimentos aún no están implementados: cada `partX.py` (salvo `part1`) lanza `NotImplementedError` con el milestone que le corresponde.
 
 - [x] Estructura del proyecto, `config`, `schemas`, `verifier`, `pricing`, `build_base_prompt`, interfaz `ModelRunner`
 - [x] Milestone 1 — `data/cases.json` + verificador + pruebas (41 tests)
 - [x] Milestone 2 — un modelo real (gpt-4o-mini) conectado y `results.jsonl` verificado (62 tests)
-- [ ] Milestone 3 — Parte 1: comparación de tres modelos (2 de 3 modelos corridos: gpt-5.5 y gpt-4o-mini; falta `qwen3:1.7b` con Ollama)
-- [ ] Milestone 4 — Parte 2.a: matriz de exposición de parámetros (2 de 3 modelos: gpt-4o-mini y gpt-5.5; falta `qwen3:1.7b` con Ollama)
+- [x] Milestone 3 — Parte 1: comparación de tres modelos (gpt-5.5, gpt-4o-mini, qwen3:1.7b)
+- [x] Milestone 4 — Parte 2.a: matriz de exposición de parámetros (3 modelos × 3 parámetros)
 - [ ] Milestone 5 — Parte 2.b: barrido de temperature × top-p
 - [ ] Milestone 6 — Parte 3: prompting estructurado
 - [ ] Milestone 7 — Parte 0: GPT-2 base
