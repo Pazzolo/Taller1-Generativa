@@ -5,11 +5,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.aggregation import PART1_COLUMNS, part1_table, write_csv
 from src.config import TABLES_DIR
+from src.exposure import part2a_table, write_part2a_csv
 from src.results import read_results
 
 
 def main() -> None:
-    table = part1_table(read_results())
+    rows = read_results()
+    write_part2a_csv(part2a_table(rows), TABLES_DIR / "part2a.csv")
+    table = part1_table(rows)
     path = TABLES_DIR / "part1.csv"
     write_csv(table, path)
 
