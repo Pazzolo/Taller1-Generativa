@@ -7,11 +7,14 @@ from src.aggregation import PART1_COLUMNS, load_notes, part1_table, write_csv
 from src.config import PART1_NOTES_PATH, TABLES_DIR
 from src.exposure import part2a_table, write_part2a_csv
 from src.results import read_results
+from src.sweeps import DECODING_COLUMNS, TOPK_COLUMNS, decoding_table, topk_table
 
 
 def main() -> None:
     rows = read_results()
     write_part2a_csv(part2a_table(rows), TABLES_DIR / "part2a.csv")
+    write_csv(decoding_table(rows), TABLES_DIR / "part2b_decoding.csv", DECODING_COLUMNS)
+    write_csv(topk_table(rows), TABLES_DIR / "part2b_topk.csv", TOPK_COLUMNS)
     table = part1_table(rows, load_notes(PART1_NOTES_PATH))
     path = TABLES_DIR / "part1.csv"
     write_csv(table, path)
