@@ -41,12 +41,13 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 │   ├── run_all.py            # --part <0|1|2a|2b|3|4a|4b> | --all
 │   ├── aggregate_results.py  # tablas desde results.jsonl
 │   ├── generate_plots.py     # gráficas de la Parte 4 desde results.jsonl
-│   └── build_report.py       # genera report/report.md desde report_template.md y los resultados
+│   ├── build_report.py       # genera report/report.md desde report_template.md y los resultados
+│   └── build_pdf.py          # convierte report.md en report/report.pdf (markdown-it + Chrome headless)
 ├── outputs/
 │   ├── raw/                  # results.jsonl (fuente de verdad, no versionado)
 │   ├── tables/
 │   └── plots/
-├── report/                   # report_template.md (texto), report.md (generado), part1_notes.json
+├── report/                   # report_template.md (texto), report.md y report.pdf (generados), part1_notes.json
 ├── tests/                    # pytest: verificador, dataset, pipeline con mock, precios
 └── notebooks/
 ```
@@ -298,10 +299,14 @@ Costo total de la Parte 4.b: $0.003.
 ### Informe
 
 ```bash
-uv run scripts/build_report.py     # report/report_template.md -> report/report.md
+uv run scripts/build_report.py                      # report_template.md -> report.md
+uv run scripts/build_report.py --author "Nombre Apellido" # opcional: reemplaza [nombre] en la portada
+uv run scripts/build_pdf.py                         # report.md -> report.pdf (A4, con figuras y numeración)
 ```
 
 El informe (`report/report.md`, 14 secciones más las respuestas de la Parte 5) **se genera**: el texto vive en `report/report_template.md` y cada número o tabla es una marca (`[[clave]]`, `[[tabla:nombre]]`) que el script rellena desde `outputs/tables/*.csv`, `outputs/raw/part0*.json` y `results.jsonl`, de modo que ninguna cifra se copia a mano. Para cambiar el texto se edita la plantilla, no `report.md`. El script falla si queda una marca sin resolver o si la respuesta 1 de la Parte 5 se sale de 100-150 palabras. Como usa `results.jsonl`, que no se versiona, hay que haber corrido los experimentos antes.
+
+El PDF se genera con Chrome o Chromium en modo headless (`CHROME_BIN` si no está en una ruta habitual). Chrome a veces no termina tras imprimir, así que el script espera a que el archivo deje de crecer y lo cierra. El informe incluye seis figuras con pie, generadas a partir de las mismas salidas.
 
 Es un borrador: hay que completar el nombre, editar el texto a la voz propia y declarar la asistencia de IA si la política del curso lo pide (hay un recordatorio en un comentario al inicio de la plantilla).
 
