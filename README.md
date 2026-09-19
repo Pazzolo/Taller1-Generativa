@@ -29,6 +29,7 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 │   ├── aggregation.py        # tabla de la Parte 1 desde results.jsonl
 │   ├── exposure.py           # Parte 2.a: valores extremos, clasificación y tabla de la matriz
 │   ├── sweeps.py             # Parte 2.b: celdas de los barridos, tablas y comprobación top_k=1 vs greedy
+│   ├── planning.py           # llamadas planificadas, claves de reanudación y estimación de costo (2.b y 3)
 │   ├── models/               # ModelRunner (base), MockRunner, runners OpenAI / Anthropic / Ollama, registry
 │   └── experiments/          # part0 ... part4b, uno por parte del taller
 ├── scripts/
@@ -157,6 +158,37 @@ Resultados (2026-09-19, `outputs/tables/part2b_decoding.csv` y `part2b_topk.csv`
 
 Lectura: en esta tarea, las palancas de muestreo no producen ningún efecto medible en exactitud ni estabilidad. La Parte 2.a ya mostró que los parámetros sí actúan sobre texto libre; aquí la decisión es un solo token de categoría con masa de probabilidad muy concentrada, así que ni siquiera temperature 1.5 lo altera. Las dos desviaciones son eventos únicos en los ajustes más permisivos: coinciden con el sentido esperado, pero con n=50 por celda no bastan para hablar de tendencia.
 
+### Parte 3 — prompting estructurado
+
+```bash
+uv run -m src.experiments.part3 --dry-run     # llamadas planificadas y costo estimado (sin llamar a la API)
+uv run -m src.experiments.part3               # 4 variantes x 10 casos x 5 corridas = 200 llamadas, gpt-4o-mini
+```
+
+Mismo modelo (`gpt-4o-mini`), mismos 10 casos oficiales y misma tarea; solo cambia el prompt:
+
+| Variante | Qué cambia |
+|---|---|
+| `zero_shot` | Solo instrucciones (es el prompt base de la Parte 1). |
+| `few_shot` | Instrucciones + 3 ejemplos propios, uno por categoría. Ninguno sale de `cases.json` (hay un test que lo comprueba). |
+| `cot` | Pide razonar paso a paso y dar la respuesta final en la última línea. |
+| `structured` | El formato lo impone la API con un esquema JSON estricto (`response_format`), no el texto del prompt. |
+
+- **CoT:** se verifica solo la respuesta final (el último objeto JSON del texto, guardado como `final_answer`); `raw_output` conserva el razonamiento completo. Solo CoT tiene esa extracción: en las demás variantes una respuesta con texto de más falla el formato. `gpt-4o-mini` no expone tokens de razonamiento, así que el razonamiento visible cuenta como salida.
+- **Formato garantizado vs. corrección semántica:** `format_compliance` mide JSON válido con categoría dentro del enum; `accuracy` mide que sea la correcta. Son independientes: un esquema estricto puede devolver un JSON válido con la categoría equivocada (hay un test que lo cubre).
+- Los costos de entrada y de salida se reportan por separado. Todas las llamadas usan un tope de 512 tokens de salida (la respuesta CoT más larga fue de 265, así que no hubo truncamiento).
+
+Resultados (2026-09-19, `outputs/tables/part3.csv`; 200 llamadas, 0 errores):
+
+| Variante | Exactitud | Formato válido | Tokens de entrada | Tokens de salida | Costo entrada | Costo salida | Costo total |
+|---|---|---|---|---|---|---|---|
+| `zero_shot` | 1.00 | 1.00 | 57.1 | 6.0 | $0.00043 | $0.00018 | $0.00061 (1.0x) |
+| `few_shot` | 1.00 | 1.00 | 133.1 | 6.0 | $0.00100 | $0.00018 | $0.00118 (1.9x) |
+| `cot` | 1.00 | 1.00 | 82.1 | 133.6 | $0.00062 | $0.00401 | $0.00462 (7.6x) |
+| `structured` | 1.00 | 1.00 | 80.1 | 5.0 | $0.00060 | $0.00015 | $0.00075 (1.2x) |
+
+Lectura: las cuatro variantes aciertan todo, así que en esta tarea no hay diferencia de exactitud y todo el contraste es de costo. Few-shot cuesta 1.9x por sumar ~76 tokens de entrada; CoT cuesta 7.6x porque produce ~22 veces más tokens de salida (que se cobran a precio de salida, 4x el de entrada) sin mejorar la exactitud; `structured` es la más barata en salida (5 tokens, JSON compacto) pero gasta ~23 tokens más de entrada que `zero_shot` pese a tener un prompt más corto, lo que sugiere que el esquema cuenta como entrada. Como `zero_shot` ya cumplía el formato en el 100 % de las llamadas, la garantía de `structured` no se aprovechó aquí. Son resultados de una sola tarea fácil con un modelo que ya la resuelve; no permiten generalizar a tareas más difíciles.
+
 ### Pruebas
 
 ```bash
@@ -177,7 +209,7 @@ Milestones 1 a 4 completos. Los demás experimentos aún no están implementados
 - [x] Milestone 3 — Parte 1: comparación de tres modelos (gpt-5.5, gpt-4o-mini, qwen3:1.7b)
 - [x] Milestone 4 — Parte 2.a: matriz de exposición de parámetros (3 modelos × 3 parámetros)
 - [x] Milestone 5 — Parte 2.b: barrido de temperature × top-p y de top-k (950 llamadas)
-- [ ] Milestone 6 — Parte 3: prompting estructurado
+- [x] Milestone 6 — Parte 3: prompting estructurado (4 variantes, 200 llamadas)
 - [ ] Milestone 7 — Parte 0: GPT-2 base
 - [ ] Milestone 8 — Parte 4.a: reasoning effort
 - [ ] Milestone 9 — Parte 4.b: casos contaminados
