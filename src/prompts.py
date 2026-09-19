@@ -6,7 +6,7 @@ def build_base_prompt(ticket: str) -> str:
         "- technical\n"
         "- account\n"
         "\n"
-        "Return only the category.\n"
+        'Return only a JSON object of the form {"category": "<category>"}.\n'
         "\n"
         "Ticket:\n"
         f"{ticket}"
@@ -27,3 +27,6 @@ def cot_prompt(ticket: str) -> str:
 
 def structured_prompt(ticket: str) -> str:
     raise NotImplementedError
+
+
+PROMPT_BUILDERS = {"base": build_base_prompt}
