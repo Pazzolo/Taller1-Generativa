@@ -55,6 +55,18 @@ def build_probe_prompt(ticket: str) -> str:
     )
 
 
+PUZZLE_ANSWER = "5"
+
+
+def build_puzzle_prompt(_ticket: str) -> str:
+    """Control de la Parte 4.a: una tarea donde el razonamiento sí puede intervenir (ignora el ticket)."""
+    return (
+        "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. "
+        "Before answering, carefully check every step. How much does the ball cost, in cents? "
+        "Reply with just the number."
+    )
+
+
 PROMPT_BUILDERS = {
     "base": build_base_prompt,
     "probe": build_probe_prompt,
@@ -62,6 +74,7 @@ PROMPT_BUILDERS = {
     "few_shot": few_shot_prompt,
     "cot": cot_prompt,
     "structured": structured_prompt,
+    "puzzle": build_puzzle_prompt,
 }
 
 STRUCTURED_SCHEMAS = {"structured": CATEGORY_SCHEMA}
