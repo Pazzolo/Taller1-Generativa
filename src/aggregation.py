@@ -4,6 +4,7 @@ from pathlib import Path
 
 from src.metrics import (
     accuracy,
+    format_compliance,
     mean_input_tokens,
     mean_latency,
     mean_output_tokens,
@@ -11,7 +12,7 @@ from src.metrics import (
     parse_rate,
     total_cost,
 )
-from src.pricing import PRICES
+from src.pricing import PRICES, cost_breakdown
 
 PART1_COLUMNS = [
     "model",
@@ -78,3 +79,50 @@ def write_csv(table: list[dict], path: Path, columns: list[str] = PART1_COLUMNS)
         writer = csv.DictWriter(f, fieldnames=columns)
         writer.writeheader()
         writer.writerows(table)
+
+
+PART3_COLUMNS = [
+    "model",
+    "prompt_variant",
+    "calls",
+    "errors",
+    "accuracy",
+    "format_compliance",
+    "parse_rate",
+    "input_tokens_mean",
+    "output_tokens_mean",
+    "cost_input_usd",
+    "cost_output_usd",
+    "cost_usd_total",
+]
+
+
+def part3_table(rows: list[dict], model: str, variants: tuple[str, ...]) -> list[dict]:
+    table = []
+    for variant in variants:
+        latest = {}
+        for r in rows:
+            if r.get("part") == "3" and r["model_id"] == model and r["prompt_variant"] == variant:
+                latest[(r["case_id"], r["run"])] = r
+        records = list(latest.values())
+        if not records:
+            continue
+        ok = [r for r in records if r["status"] == "ok"]
+        costs = [cost_breakdown(model, r["input_tokens"], r["output_tokens"]) for r in ok]
+        table.append(
+            {
+                "model": model,
+                "prompt_variant": variant,
+                "calls": len(records),
+                "errors": len(records) - len(ok),
+                "accuracy": accuracy(records),
+                "format_compliance": format_compliance(records),
+                "parse_rate": parse_rate(records),
+                "input_tokens_mean": mean_input_tokens(ok) if ok else None,
+                "output_tokens_mean": mean_output_tokens(ok) if ok else None,
+                "cost_input_usd": sum(c[0] for c in costs),
+                "cost_output_usd": sum(c[1] for c in costs),
+                "cost_usd_total": sum(c[0] + c[1] for c in costs),
+            }
+        )
+    return table

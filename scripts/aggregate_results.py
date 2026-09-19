@@ -3,8 +3,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.aggregation import PART1_COLUMNS, load_notes, part1_table, write_csv
+from src.aggregation import PART1_COLUMNS, PART3_COLUMNS, load_notes, part1_table, part3_table, write_csv
 from src.config import PART1_NOTES_PATH, TABLES_DIR
+from src.experiments.part3 import MODEL as PART3_MODEL, VARIANTS as PART3_VARIANTS
 from src.exposure import part2a_table, write_part2a_csv
 from src.results import read_results
 from src.sweeps import DECODING_COLUMNS, TOPK_COLUMNS, decoding_table, topk_table
@@ -15,6 +16,7 @@ def main() -> None:
     write_part2a_csv(part2a_table(rows), TABLES_DIR / "part2a.csv")
     write_csv(decoding_table(rows), TABLES_DIR / "part2b_decoding.csv", DECODING_COLUMNS)
     write_csv(topk_table(rows), TABLES_DIR / "part2b_topk.csv", TOPK_COLUMNS)
+    write_csv(part3_table(rows, PART3_MODEL, PART3_VARIANTS), TABLES_DIR / "part3.csv", PART3_COLUMNS)
     table = part1_table(rows, load_notes(PART1_NOTES_PATH))
     path = TABLES_DIR / "part1.csv"
     write_csv(table, path)
