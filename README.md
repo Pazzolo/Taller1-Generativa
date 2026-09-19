@@ -16,7 +16,7 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 
 ```text
 .
-├── data/                     # cases.json: 10 casos oficiales + 5 de debug (campo "split")
+├── data/                     # cases.json (10 oficiales + 5 de debug) y contaminated_cases.json (3 casos de la Parte 4.b)
 ├── src/
 │   ├── config.py             # rutas, SEED, categorías permitidas
 │   ├── runner.py             # run_case(): prompt -> modelo -> verificador -> costo -> JSONL
@@ -34,6 +34,7 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 │   ├── plots_part0.py        # gráficas de la Parte 0 (matplotlib)
 │   ├── reasoning.py          # Parte 4.a: tablas por nivel de esfuerzo, saltos entre niveles y control
 │   ├── plots_part4.py        # gráficas de la Parte 4
+│   ├── contamination.py      # Parte 4.b: tablas por caso y nivel, y por llamada
 │   ├── models/               # ModelRunner (base), MockRunner, runners OpenAI / Anthropic / Ollama, registry
 │   └── experiments/          # part0 ... part4b, uno por parte del taller
 ├── scripts/
@@ -262,6 +263,37 @@ Modelo `openai_razonamiento` (`gpt-5.6-luna`, $0.20 / $1.20 por 1M tokens, verif
 
 Lectura: el parámetro funciona, pero esta tarea es demasiado fácil para que el razonamiento se note en la exactitud; el modelo decide no razonar y el nivel solo encarece un poco. No se debe concluir que razonar no sirva en general, solo que aquí no aporta. La Parte 4.b prueba justamente casos con distracciones. Costo total de la Parte 4.a: $0.004.
 
+### Parte 4.b — casos contaminados
+
+```bash
+uv run -m src.experiments.part4b --dry-run          # llamadas planificadas (sin llamar a la API)
+uv run -m src.experiments.part4b                    # 3 casos x {low, high} x 10 corridas = 60 llamadas
+uv run -m src.experiments.part4b --levels xhigh     # comprobación adicional con el esfuerzo máximo aceptado
+```
+
+Tres casos fáciles, escritos a mano en `data/contaminated_cases.json`, cada uno con una trampa distinta. La etiqueta correcta es inequívoca en los tres: la dificultad está en la trampa, no en el criterio (un test comprueba que cada ticket trae, además de la señal correcta, señales de una categoría equivocada).
+
+| Caso | Trampa | Correcta | Qué la contamina |
+|---|---|---|---|
+| `contaminated_01` | Distracción | `account` | Una anécdota larga sobre un terminal de pago que se congela y un software de facturas; lo que se pide es cambiar el correo del perfil. |
+| `contaminated_02` | Marco engañoso | `billing` | El usuario cree que es un fallo de los servidores y escribe a soporte técnico, pero lo que pide es el reembolso de un cobro duplicado. |
+| `contaminated_03` | Correlación espuria | `technical` | Menciona «premium», «pago» y «factura», pero el problema es que la aplicación se cierra. |
+
+Modelo `gpt-5.6-luna`, mismo prompt base que la Parte 1, 10 corridas por celda para ver variación. Los niveles `low` y `high` son los que pide el plan; `xhigh` es una comprobación adicional. Tablas: `outputs/tables/part4b.csv` (por caso y nivel) y `part4b_runs.csv` (una fila por llamada, con predicción, esperado, acierto y tokens de razonamiento).
+
+| Caso | low: aciertos / razonamiento (media) | high | xhigh (extra) |
+|---|---|---|---|
+| Distracción | 10/10, 0 | 10/10, 1.6 | 10/10, 4.3 |
+| Marco engañoso | 10/10, 0 | 10/10, 4.5 | 10/10, 7.8 |
+| Correlación espuria | 10/10, 0 | 10/10, 9.2 | 10/10, 22.2 |
+
+- **Las trampas no funcionaron:** 90 de 90 llamadas correctas, con predicciones idénticas en todas las corridas. No se observa escalado inverso.
+- **El razonamiento sí crece con el esfuerzo** en los tres casos, pero es minúsculo: 28 tokens como máximo en una llamada. En cada nivel el caso con más tokens fue el de la correlación espuria y el de menos el de la distracción (por ejemplo, en `high`: 9.2, 4.5 y 1.6). Con 10 corridas por celda y esas cifras es un indicio, no una conclusión.
+- **Contraste con Gema et al. (2025)**, *Inverse Scaling in Test-Time Compute*: el artículo reporta que más razonamiento puede empeorar la exactitud: los modelos Claude se distraen cada vez más con información irrelevante, los modelos de la serie o de OpenAI resisten los distractores pero se sobreajustan al marco del problema, y los modelos pasan de priors razonables a correlaciones espurias. Este experimento no lo reproduce, pero tampoco lo contradice: sus tareas son otras (conteo con distractores, regresión con rasgos espurios, deducción, riesgos de IA), más difíciles, con presupuestos de razonamiento mucho más largos y otros modelos, mientras que aquí hay tres casos fáciles con exactitud del 100 % y decenas de tokens de razonamiento, así que ni siquiera se llega al régimen que estudian. Para detectar un efecto inverso harían falta casos donde el modelo falle sin trampas o con más razonamiento.
+- **Tres casos no demuestran una ley general**, ni a favor ni en contra.
+
+Costo total de la Parte 4.b: $0.003.
+
 ### Pruebas
 
 ```bash
@@ -285,7 +317,7 @@ Milestones 1 a 4 completos. Los demás experimentos aún no están implementados
 - [x] Milestone 6 — Parte 3: prompting estructurado (4 variantes, 200 llamadas)
 - [x] Milestone 7 — Parte 0: GPT-2 base (0.a, 0.b y 0.c, 4 figuras)
 - [x] Milestone 8 — Parte 4.a: reasoning effort (5 niveles + control, 165 llamadas)
-- [ ] Milestone 9 — Parte 4.b: casos contaminados
+- [x] Milestone 9 — Parte 4.b: casos contaminados (3 casos × 3 niveles × 10 corridas)
 - [ ] Milestone 10 — agregación, gráficas y reporte
 
 ## Convenciones de commits
