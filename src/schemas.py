@@ -11,7 +11,7 @@ class Expected(BaseModel):
     category: Category
 
 
-Split = Literal["official", "debug"]
+Split = Literal["official", "debug", "contaminated"]
 
 
 class Case(BaseModel):
@@ -19,6 +19,7 @@ class Case(BaseModel):
     ticket: str
     expected: Expected
     split: Split = "official"
+    trap: str | None = None
 
 
 CATEGORY_SCHEMA = {

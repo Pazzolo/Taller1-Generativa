@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
 CASES_PATH = DATA_DIR / "cases.json"
+CONTAMINATED_PATH = DATA_DIR / "contaminated_cases.json"
 OUTPUTS_DIR = ROOT / "outputs"
 RAW_DIR = OUTPUTS_DIR / "raw"
 TABLES_DIR = OUTPUTS_DIR / "tables"
