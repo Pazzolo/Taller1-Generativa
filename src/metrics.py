@@ -33,7 +33,19 @@ def mean_reasoning_tokens(records: list[dict]) -> float | None:
 
 
 def stability(records: list[dict]) -> float:
-    raise NotImplementedError
+    """Por caso: parte de corridas que coinciden con la respuesta más frecuente; promedio entre casos.
+
+    La respuesta es la categoría predicha; una salida inválida cuenta como una sola respuesta '<invalid>'.
+    Las llamadas con error se excluyen.
+    """
+    by_case: dict[str, list[str]] = {}
+    for r in records:
+        if r.get("status", "ok") != "ok":
+            continue
+        answer = r["predicted"] if r["valid_schema"] else "<invalid>"
+        by_case.setdefault(r["case_id"], []).append(answer)
+    shares = [max(answers.count(a) for a in set(answers)) / len(answers) for answers in by_case.values()]
+    return sum(shares) / len(shares)
 
 
 def total_cost(records: list[dict]) -> float:
