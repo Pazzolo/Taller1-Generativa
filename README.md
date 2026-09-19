@@ -27,6 +27,7 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 │   ├── metrics.py            # métricas centralizadas
 │   ├── pricing.py            # precios con fecha de verificación, cost_usd()
 │   ├── aggregation.py        # tabla de la Parte 1 desde results.jsonl
+│   ├── exposure.py           # Parte 2.a: valores extremos, clasificación y tabla de la matriz
 │   ├── models/               # ModelRunner (base), MockRunner, runners OpenAI / Anthropic / Ollama, registry
 │   └── experiments/          # part0 ... part4b, uno por parte del taller
 ├── scripts/
@@ -76,7 +77,7 @@ uv run -m src.experiments.part1 --model propietario_economico --limit 1  # 1 cas
 uv run -m src.experiments.part1 --model propietario_economico            # los 10 casos oficiales
 uv run -m src.experiments.part1 --model propietario_grande               # gpt-5.5 (OpenAI)
 uv run -m src.experiments.part1 --model open_weight_pequeno              # qwen3:1.7b (Ollama local)
-uv run scripts/aggregate_results.py                                      # outputs/tables/part1.csv
+uv run scripts/aggregate_results.py                                      # outputs/tables/part1.csv y part2a.csv
 ```
 
 Modelos de la Parte 1:
@@ -97,6 +98,32 @@ Con `--model mock` los resultados van a `outputs/raw/mock_results.jsonl`; con un
 
 Cada llamada, exitosa o fallida, agrega una línea al JSONL (nunca se sobrescribe). Las fallas de API se registran con `status: "error"`, el mensaje literal y el `http_status`.
 
+### Parte 2.a — matriz de exposición de parámetros
+
+```bash
+uv run -m src.experiments.part2a --dry-run                               # cuántas llamadas, sin llamar a la API
+uv run -m src.experiments.part2a --models propietario_grande propietario_economico
+```
+
+Para cada modelo y parámetro se envía un valor bajo y uno alto (`temperature` 0.0 / 2.0, `top_p` 0.01 / 1.0, `top_k` 1 / 100), 5 corridas cada uno, con un prompt abierto (`probe`) donde el muestreo sí cambia la salida. Un HTTP 200 no basta para decir que el parámetro actúa; el estado se decide así:
+
+- `rejected`: la API responde 400 o 422 en algún valor. Se guarda el mensaje literal.
+- `accepted_and_acts`: sin errores y hay más salidas distintas con el valor alto que con el bajo.
+- `accepted_and_does_not_act`: sin errores y la diversidad no aumenta.
+- `inconclusive`: fallos que no son un rechazo del parámetro (sin conexión, 429, 5xx). No cuenta como rechazo.
+
+El criterio se apoya en solo 5 corridas por ajuste, así que es una evidencia, no una prueba. La columna `declared` es lo que documenta el proveedor; para `gpt-5.5` no encontré esa información en su página de modelo (`no documentado`). Si un ajuste falla, no se repite: repetir un rechazo no aporta información.
+
+Resultados actuales (2026-09-19, `outputs/tables/part2a.csv`):
+
+| Modelo | temperature | top_p | top_k |
+|---|---|---|---|
+| `gpt-4o-mini` | actúa (1 vs 5 salidas distintas) | actúa (1 vs 5) | rechazado, 400 |
+| `gpt-5.5` | rechazado, 400 | rechazado, 400 | rechazado, 400 |
+| `qwen3:1.7b` | pendiente (Ollama) | pendiente | pendiente |
+
+`gpt-5.5` acepta solo los valores por defecto (`temperature=1`, `top_p=1.0`): los valores no predeterminados fallan con `Only the default (1) value is supported` o `not supported with this model`.
+
 ### Pruebas
 
 ```bash
@@ -115,7 +142,7 @@ Milestones 1 y 2 completos; Milestone 3 pendiente de la corrida de `qwen3:1.7b`.
 - [x] Milestone 1 — `data/cases.json` + verificador + pruebas (41 tests)
 - [x] Milestone 2 — un modelo real (gpt-4o-mini) conectado y `results.jsonl` verificado (62 tests)
 - [ ] Milestone 3 — Parte 1: comparación de tres modelos (2 de 3 modelos corridos: gpt-5.5 y gpt-4o-mini; falta `qwen3:1.7b` con Ollama)
-- [ ] Milestone 4 — Parte 2.a: matriz de exposición de parámetros
+- [ ] Milestone 4 — Parte 2.a: matriz de exposición de parámetros (2 de 3 modelos: gpt-4o-mini y gpt-5.5; falta `qwen3:1.7b` con Ollama)
 - [ ] Milestone 5 — Parte 2.b: barrido de temperature × top-p
 - [ ] Milestone 6 — Parte 3: prompting estructurado
 - [ ] Milestone 7 — Parte 0: GPT-2 base
