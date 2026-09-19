@@ -29,4 +29,11 @@ def structured_prompt(ticket: str) -> str:
     raise NotImplementedError
 
 
-PROMPT_BUILDERS = {"base": build_base_prompt}
+def build_probe_prompt(ticket: str) -> str:
+    return (
+        "In one sentence of at most 25 words, write how a support agent might reply "
+        "to this ticket.\n\nTicket:\n" + ticket
+    )
+
+
+PROMPT_BUILDERS = {"base": build_base_prompt, "probe": build_probe_prompt}
