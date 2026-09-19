@@ -1,10 +1,9 @@
 import argparse
 
-from src.aggregation import latest_per_case, part1_table
 from src.config import RESULTS_PATH
 from src.models.registry import get_runner
-from src.pricing import cost_usd
-from src.results import call_key, completed_keys, read_results
+from src.planning import estimate, key_of, plan
+from src.results import completed_keys, read_results
 from src.runner import run_case
 from src.schemas import load_cases
 from src.sweeps import (
@@ -22,36 +21,6 @@ SWEEPS = {
     "decoding": (DECODING_EXPERIMENT, DECODING_MODEL, decoding_cells),
     "topk": (TOPK_EXPERIMENT, TOPK_MODEL, topk_cells),
 }
-
-
-def plan(model_key: str, experiment: str, cells: list[dict], cases, runs: int) -> list[dict]:
-    return [
-        {"model_key": model_key, "experiment": experiment, "case": case, "run": run, **cell}
-        for cell in cells
-        for case in cases
-        for run in range(1, runs + 1)
-    ]
-
-
-def key_of(call: dict) -> tuple:
-    return call_key(
-        {
-            "model_id": call["model_key"], "experiment": call["experiment"], "case_id": call["case"].id,
-            "run": call["run"], "temperature": call["temperature"], "top_p": call["top_p"],
-            "top_k": call["top_k"], "effort": None, "prompt_variant": "base",
-        }
-    )
-
-
-def estimate(model_key: str, calls: int, rows: list[dict]) -> str:
-    part1 = [r for r in rows if r.get("part") == "1" and r.get("model_id") == model_key and r["status"] == "ok"]
-    if not part1:
-        return "estimated tokens/cost: n/a (no Part 1 rows for this model)"
-    part1 = latest_per_case(part1)
-    tokens_in = sum(r["input_tokens"] for r in part1) / len(part1) * calls
-    tokens_out = sum(r["output_tokens"] for r in part1) / len(part1) * calls
-    cost = cost_usd(model_key, tokens_in, tokens_out)
-    return f"estimated input tokens: {tokens_in:,.0f}\nestimated output tokens: {tokens_out:,.0f}\nestimated cost: ${cost:.4f}"
 
 
 def main() -> None:

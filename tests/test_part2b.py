@@ -1,6 +1,6 @@
 import pytest
 
-from src.experiments.part2b import estimate, key_of, plan
+from src.planning import estimate, key_of, plan
 from src.models.mock_runner import MockRunner
 from src.models.openai_runner import OpenAIRunner
 from src.results import call_key, completed_keys, read_results
