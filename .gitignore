@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Secrets / API keys
+.env
+.env.*
+!.env.example
+
+# Model weights and data caches
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+*.bin
+.cache/
+outputs/raw/*
+!outputs/raw/.gitkeep
+
+# Local working material (not versioned)
+taller-01-game-plan.md
+context/
+Ejemplos/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

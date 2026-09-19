@@ -1,0 +1,11 @@
+openai
+transformers
+torch
+pandas
+numpy
+matplotlib
+python-dotenv
+pydantic
+requests
+tiktoken
+# ollama  # solo si se usa el cliente oficial para el modelo open-weight
