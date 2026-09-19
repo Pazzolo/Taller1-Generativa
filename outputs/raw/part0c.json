@@ -1,0 +1,111 @@
+{
+  "model": "openai-community/gpt2",
+  "note": "GPT-2 base, decodificación greedy, mismo prompt que la Parte 1 (build_base_prompt).",
+  "max_new_tokens": 60,
+  "cases": 10,
+  "parse_ok": 0,
+  "valid_schema": 0,
+  "correct": 0,
+  "records": [
+    {
+      "case_id": "case_01",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nI was charged twice for the same subscription.",
+      "raw_output": "\n\nI was charged twice for the same subscription.\n\nI was charged twice for the same subscription.\n\nI was charged twice for the same subscription.\n\nI was charged twice for the same subscription.\n\nI was charged twice for the same subscription.\n\nI was charged",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "billing"
+    },
+    {
+      "case_id": "case_02",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nThe application crashes every time I try to upload a file.",
+      "raw_output": "\n\nThe application crashes every time I try to upload a file.\n\nThe application crashes every time I try to upload a file.\n\nThe application crashes every time I try to upload a file.\n\nThe application crashes every time I try to upload a file.\n\nThe application",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "technical"
+    },
+    {
+      "case_id": "case_03",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nI forgot my password and cannot access my account.",
+      "raw_output": "\n\nI can't access my account.\n\nI can't access my account.\n\nI can't access my account.\n\nI can't access my account.\n\nI can't access my account.\n\nI can't access my account.\n\nI can't access",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "account"
+    },
+    {
+      "case_id": "case_04",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nThe amount on my credit card statement is higher than the price shown on my latest invoice.",
+      "raw_output": "\n\nExample:\n\n$1 = $1.00\n\n$2 = $2.00\n\n$3 = $3.00\n\n$4 = $4.00\n\n$5 = $5.00\n\n$6 = $6.00\n\n",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "billing"
+    },
+    {
+      "case_id": "case_05",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nPages take more than a minute to load and sometimes return a 500 error.",
+      "raw_output": "\n\nThe following example shows how to create a ticket for a specific category.\n\npackage main import ( \"fmt\" \"log\" \"net/http\" \"log/http\" \"net/http/http.core\" \"net/http/http.core.core.core",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "technical"
+    },
+    {
+      "case_id": "case_06",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nI want to change the email address associated with my profile.",
+      "raw_output": "\n\nI want to change the email address associated with my profile.\n\nI want to change the email address associated with my profile.\n\nI want to change the email address associated with my profile.\n\nI want to change the email address associated with my profile.\n\nI want",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "account"
+    },
+    {
+      "case_id": "case_07",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nI would like a refund for the annual plan I purchased yesterday by mistake.",
+      "raw_output": "\n\nI would like to know if the refund is valid.\n\nI would like to know if the refund is valid.\n\nI would like to know if the refund is valid.\n\nI would like to know if the refund is valid.\n\nI would like to know if",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "billing"
+    },
+    {
+      "case_id": "case_08",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nThe export to CSV button does nothing when I click it.",
+      "raw_output": "\n\nThe export to JSON button does nothing when I click it.\n\nThe export to CSV button does nothing when I click it.\n\nThe export to JSON button does nothing when I click it.\n\nThe export to JSON button does nothing when I click it.\n\nThe export",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "technical"
+    },
+    {
+      "case_id": "case_09",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nPlease delete my account and all the personal data linked to it.",
+      "raw_output": "\n\nIf you want to delete the data, you can use the following command:\n\n$ curl -X POST -d '{\"category\": \"my-category\"}' -H 'Content-Type: application/json' -d '{\"category\": \"my-category\"}'\n",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "account"
+    },
+    {
+      "case_id": "case_10",
+      "prompt": "Classify the support ticket into exactly one category:\n\n- billing\n- technical\n- account\n\nReturn only a JSON object of the form {\"category\": \"<category>\"}.\n\nTicket:\nMy coupon code was not applied and I was charged the full price.",
+      "raw_output": "\n\nExample:\n\n$1 = $1.99\n\n$2 = $2.99\n\n$3 = $3.99\n\n$4 = $4.99\n\n$5 = $5.99\n\n$6 = $6.99\n\n",
+      "parse_ok": false,
+      "valid_schema": false,
+      "correct": false,
+      "predicted": null,
+      "expected": "billing"
+    }
+  ]
+}

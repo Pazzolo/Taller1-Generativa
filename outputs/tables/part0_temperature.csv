@@ -1,0 +1,11 @@
+prefix,temperature,entropy_bits,nucleus_size_p90
+Thank you very,0.1,0.0000,1
+Thank you very,0.7,0.0070,1
+Thank you very,1.0,0.1017,1
+Thank you very,1.5,2.1478,12
+Thank you very,2.0,9.7731,14537
+A customer support ticket about an unexpected,0.1,0.9483,2
+A customer support ticket about an unexpected,0.7,6.3912,154
+A customer support ticket about an unexpected,1.0,9.3303,1550
+A customer support ticket about an unexpected,1.5,12.2363,8364
+A customer support ticket about an unexpected,2.0,13.5436,15726

@@ -1,0 +1,9 @@
+prefix,entropy_bits_t1,top_token,top_prob,chosen_as
+The capital of France is,8.6539,' the',0.0846,
+The quick brown fox jumps over the lazy,9.2908,"','",0.0557,
+Once upon a,8.5074,' time',0.1766,
+Thank you very,0.1017,' much',0.9916,high_confidence
+The United States of,0.5275,' America',0.9659,
+Happy birthday to,7.7057,' you',0.1869,
+"1, 2, 3, 4, 5, 6,",0.5988,' 7',0.9505,
+A customer support ticket about an unexpected,9.3303,' problem',0.0463,low_confidence

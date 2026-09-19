@@ -1,0 +1,31 @@
+prefix,rank,token,probability,survives
+Thank you very,1,' much',0.991578,both
+Thank you very,2,' very',0.002545,top_k_only
+Thank you very,3,"','",0.002516,top_k_only
+Thank you very,4,'much',0.000877,top_k_only
+Thank you very,5,' Much',0.000405,top_k_only
+Thank you very,6,' well',0.000234,neither
+Thank you very,7,' highly',0.000189,neither
+Thank you very,8,' greatly',0.000182,neither
+Thank you very,9,' sincerely',0.000164,neither
+Thank you very,10,' MUCH',0.000132,neither
+Thank you very,11,' deeply',0.000052,neither
+Thank you very,12,' good',0.000047,neither
+Thank you very,13,' carefully',0.000040,neither
+Thank you very,14,' best',0.000040,neither
+Thank you very,15,' many',0.000037,neither
+A customer support ticket about an unexpected,1,' problem',0.046341,both
+A customer support ticket about an unexpected,2,' change',0.042394,both
+A customer support ticket about an unexpected,3,' event',0.030200,both
+A customer support ticket about an unexpected,4,' outage',0.022732,both
+A customer support ticket about an unexpected,5,' delay',0.018760,both
+A customer support ticket about an unexpected,6,' issue',0.014538,top_p_only
+A customer support ticket about an unexpected,7,' item',0.013699,top_p_only
+A customer support ticket about an unexpected,8,' error',0.012889,top_p_only
+A customer support ticket about an unexpected,9,' trip',0.012820,top_p_only
+A customer support ticket about an unexpected,10,' loss',0.012361,top_p_only
+A customer support ticket about an unexpected,11,' payment',0.011485,top_p_only
+A customer support ticket about an unexpected,12,' customer',0.011191,top_p_only
+A customer support ticket about an unexpected,13,' situation',0.010117,top_p_only
+A customer support ticket about an unexpected,14,' bill',0.009166,top_p_only
+A customer support ticket about an unexpected,15,' incident',0.009116,top_p_only
