@@ -6,7 +6,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.aggregation import PART1_COLUMNS, PART3_COLUMNS, load_notes, part1_table, part3_table, write_csv
 from src.config import PART1_NOTES_PATH, TABLES_DIR
 from src.experiments.part3 import MODEL as PART3_MODEL, VARIANTS as PART3_VARIANTS
+from src.config import CONTAMINATED_PATH
+from src.contamination import CONTAMINATED_COLUMNS, RUN_COLUMNS, contaminated_table, runs_table
 from src.experiments.part4a import LEVELS as PART4A_LEVELS, MODEL as PART4A_MODEL
+from src.experiments.part4b import MODEL as PART4B_MODEL, REPORT_LEVELS as PART4B_LEVELS
+from src.schemas import load_cases
 from src.prompts import PUZZLE_ANSWER
 from src.reasoning import CONTROL_COLUMNS, DELTA_COLUMNS, EFFORT_COLUMNS, control_table, deltas_table, effort_table
 from src.exposure import part2a_table, write_part2a_csv
@@ -24,6 +28,9 @@ def main() -> None:
     write_csv(efforts, TABLES_DIR / "part4a.csv", EFFORT_COLUMNS)
     write_csv(deltas_table(efforts), TABLES_DIR / "part4a_deltas.csv", DELTA_COLUMNS)
     write_csv(control_table(rows, PART4A_MODEL, PART4A_LEVELS, PUZZLE_ANSWER), TABLES_DIR / "part4a_control.csv", CONTROL_COLUMNS)
+    contaminated = load_cases(CONTAMINATED_PATH, split="contaminated")
+    write_csv(contaminated_table(rows, PART4B_MODEL, contaminated, PART4B_LEVELS), TABLES_DIR / "part4b.csv", CONTAMINATED_COLUMNS)
+    write_csv(runs_table(rows, PART4B_MODEL, contaminated, PART4B_LEVELS), TABLES_DIR / "part4b_runs.csv", RUN_COLUMNS)
     table = part1_table(rows, load_notes(PART1_NOTES_PATH))
     path = TABLES_DIR / "part1.csv"
     write_csv(table, path)
