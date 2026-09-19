@@ -1,0 +1,6 @@
+model,effort,calls,errors,reasoning_tokens_mean,total_output_tokens_mean,answer_correct_rate
+openai_razonamiento,none,3,0,0.0,4.0,1.0
+openai_razonamiento,low,3,0,26.0,36.0,1.0
+openai_razonamiento,medium,3,0,36.333333333333336,46.333333333333336,1.0
+openai_razonamiento,high,3,0,20.333333333333332,30.333333333333332,1.0
+openai_razonamiento,xhigh,3,0,49.0,59.0,1.0

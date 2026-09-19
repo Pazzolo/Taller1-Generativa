@@ -1,0 +1,7 @@
+model,effort,calls,errors,accuracy,reasoning_tokens_mean,visible_output_tokens_mean,total_output_tokens_mean,latency_mean,cost_usd_total,cost_usd_per_call,error_message
+openai_razonamiento,none,30,0,1.0,0.0,8.0,8.0,0.852433001405249,0.0006245999999999997,2.081999999999999e-05,
+openai_razonamiento,low,30,0,1.0,0.0,8.0,8.0,0.7780762055714149,0.0006245999999999997,2.081999999999999e-05,
+openai_razonamiento,medium,30,0,1.0,0.0,8.0,8.0,0.7569123056057531,0.0006245999999999997,2.081999999999999e-05,
+openai_razonamiento,high,30,0,1.0,0.36666666666666664,8.2,8.566666666666666,0.8322143708316919,0.0006449999999999996,2.1499999999999987e-05,
+openai_razonamiento,xhigh,30,0,1.0,1.5666666666666667,8.8,10.366666666666667,0.8028658847945432,0.0007097999999999997,2.365999999999999e-05,
+openai_razonamiento,max,1,1,,,,,,,,"Error code: 400 - {'error': {'message': ""Unsupported value: 'reasoning_effort' does not support 'max' with this model. Supported values are: 'none', 'low', 'medium', 'high', and 'xhigh'."", 'type': 'invalid_request_error', 'param': 'reasoning_effort', 'code': 'unsupported_value'}}"
