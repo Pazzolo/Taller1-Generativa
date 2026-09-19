@@ -3,7 +3,8 @@ def accuracy(records: list[dict]) -> float:
 
 
 def mean_latency(records: list[dict]) -> float:
-    raise NotImplementedError
+    values = [r["latency_seconds"] for r in records if r.get("latency_seconds") is not None]
+    return sum(values) / len(values)
 
 
 def median_latency(records: list[dict]) -> float:
@@ -23,7 +24,7 @@ def stability(records: list[dict]) -> float:
 
 
 def total_cost(records: list[dict]) -> float:
-    raise NotImplementedError
+    return sum(r["cost_usd"] for r in records if r.get("cost_usd") is not None)
 
 
 def parse_rate(records: list[dict]) -> float:
