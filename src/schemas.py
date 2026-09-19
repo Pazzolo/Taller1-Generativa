@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -10,10 +11,14 @@ class Expected(BaseModel):
     category: Category
 
 
+Split = Literal["official", "debug"]
+
+
 class Case(BaseModel):
     id: str
     ticket: str
     expected: Expected
+    split: Split = "official"
 
 
 CATEGORY_SCHEMA = {
@@ -26,6 +31,7 @@ CATEGORY_SCHEMA = {
 }
 
 
-def load_cases(path: Path = CASES_PATH) -> list[Case]:
+def load_cases(path: Path = CASES_PATH, split: Split | None = "official") -> list[Case]:
     with open(path, encoding="utf-8") as f:
-        return [Case(**item) for item in json.load(f)]
+        cases = [Case(**item) for item in json.load(f)]
+    return [c for c in cases if split is None or c.split == split]
