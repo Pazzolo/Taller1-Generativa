@@ -1,0 +1,92 @@
+[
+  {
+    "id": "case_01",
+    "split": "official",
+    "ticket": "I was charged twice for the same subscription.",
+    "expected": {"category": "billing"}
+  },
+  {
+    "id": "case_02",
+    "split": "official",
+    "ticket": "The application crashes every time I try to upload a file.",
+    "expected": {"category": "technical"}
+  },
+  {
+    "id": "case_03",
+    "split": "official",
+    "ticket": "I forgot my password and cannot access my account.",
+    "expected": {"category": "account"}
+  },
+  {
+    "id": "case_04",
+    "split": "official",
+    "ticket": "The amount on my credit card statement is higher than the price shown on my latest invoice.",
+    "expected": {"category": "billing"}
+  },
+  {
+    "id": "case_05",
+    "split": "official",
+    "ticket": "Pages take more than a minute to load and sometimes return a 500 error.",
+    "expected": {"category": "technical"}
+  },
+  {
+    "id": "case_06",
+    "split": "official",
+    "ticket": "I want to change the email address associated with my profile.",
+    "expected": {"category": "account"}
+  },
+  {
+    "id": "case_07",
+    "split": "official",
+    "ticket": "I would like a refund for the annual plan I purchased yesterday by mistake.",
+    "expected": {"category": "billing"}
+  },
+  {
+    "id": "case_08",
+    "split": "official",
+    "ticket": "The export to CSV button does nothing when I click it.",
+    "expected": {"category": "technical"}
+  },
+  {
+    "id": "case_09",
+    "split": "official",
+    "ticket": "Please delete my account and all the personal data linked to it.",
+    "expected": {"category": "account"}
+  },
+  {
+    "id": "case_10",
+    "split": "official",
+    "ticket": "My coupon code was not applied and I was charged the full price.",
+    "expected": {"category": "billing"}
+  },
+  {
+    "id": "case_11",
+    "split": "debug",
+    "ticket": "I want to update the name shown on my profile.",
+    "expected": {"category": "account"}
+  },
+  {
+    "id": "case_12",
+    "split": "debug",
+    "ticket": "The search bar returns no results even for words that I know exist.",
+    "expected": {"category": "technical"}
+  },
+  {
+    "id": "case_13",
+    "split": "debug",
+    "ticket": "Can you confirm which payment method will be used for my next renewal?",
+    "expected": {"category": "billing"}
+  },
+  {
+    "id": "case_14",
+    "split": "debug",
+    "ticket": "Email notifications stopped arriving after the latest update.",
+    "expected": {"category": "technical"}
+  },
+  {
+    "id": "case_15",
+    "split": "debug",
+    "ticket": "My account was locked after too many failed sign-in attempts.",
+    "expected": {"category": "account"}
+  }
+]
