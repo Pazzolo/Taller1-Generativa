@@ -4,7 +4,7 @@ from pathlib import Path
 from src.config import RESULTS_PATH
 from src.models.base import ModelRunner
 from src.pricing import PRICES, cost_usd
-from src.prompts import PROMPT_BUILDERS
+from src.prompts import PROMPT_BUILDERS, STRUCTURED_SCHEMAS, extract_answer
 from src.results import append_result
 from src.schemas import Case
 from src.verifier import verify_prediction
@@ -46,7 +46,12 @@ def run_case(
     expected = case.expected.model_dump()
     try:
         output = runner.generate(
-            prompt, temperature=temperature, top_p=top_p, top_k=top_k, effort=effort
+            prompt,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            effort=effort,
+            structured_schema=STRUCTURED_SCHEMAS.get(prompt_variant),
         )
     except NotImplementedError:
         raise
@@ -64,6 +69,7 @@ def run_case(
             expected=expected["category"],
         )
     else:
+        final_answer = extract_answer(prompt_variant, output["text"])
         record.update(
             status="ok",
             input_tokens=output["input_tokens"],
@@ -71,7 +77,8 @@ def run_case(
             reasoning_tokens=output["reasoning_tokens"],
             latency_seconds=output["latency_seconds"],
             raw_output=output["text"],
-            **verify_prediction(output["text"], expected),
+            final_answer=final_answer,
+            **verify_prediction(final_answer, expected),
             cost_usd=(
                 cost_usd(model_key, output["input_tokens"], output["output_tokens"])
                 if model_key in PRICES
