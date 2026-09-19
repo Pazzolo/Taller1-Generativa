@@ -30,6 +30,8 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 │   ├── exposure.py           # Parte 2.a: valores extremos, clasificación y tabla de la matriz
 │   ├── sweeps.py             # Parte 2.b: celdas de los barridos, tablas y comprobación top_k=1 vs greedy
 │   ├── planning.py           # llamadas planificadas, claves de reanudación y estimación de costo (2.b y 3)
+│   ├── distribution.py       # Parte 0: softmax con temperatura, entropía, núcleo top-p, conjuntos top-k / top-p
+│   ├── plots_part0.py        # gráficas de la Parte 0 (matplotlib)
 │   ├── models/               # ModelRunner (base), MockRunner, runners OpenAI / Anthropic / Ollama, registry
 │   └── experiments/          # part0 ... part4b, uno por parte del taller
 ├── scripts/
@@ -189,6 +191,41 @@ Resultados (2026-09-19, `outputs/tables/part3.csv`; 200 llamadas, 0 errores):
 
 Lectura: las cuatro variantes aciertan todo, así que en esta tarea no hay diferencia de exactitud y todo el contraste es de costo. Few-shot cuesta 1.9x por sumar ~76 tokens de entrada; CoT cuesta 7.6x porque produce ~22 veces más tokens de salida (que se cobran a precio de salida, 4x el de entrada) sin mejorar la exactitud; `structured` es la más barata en salida (5 tokens, JSON compacto) pero gasta ~23 tokens más de entrada que `zero_shot` pese a tener un prompt más corto, lo que sugiere que el esquema cuenta como entrada. Como `zero_shot` ya cumplía el formato en el 100 % de las llamadas, la garantía de `structured` no se aprovechó aquí. Son resultados de una sola tarea fácil con un modelo que ya la resuelve; no permiten generalizar a tareas más difíciles.
 
+### Parte 0 — GPT-2 base (local, sin API)
+
+```bash
+uv run -m src.experiments.part0            # 0.a, 0.b y 0.c
+uv run -m src.experiments.part0 --only a   # solo una subparte (a, b o c)
+```
+
+Usa `openai-community/gpt2` en CPU (no una variante instruct). La primera ejecución descarga el modelo (~550 MB); requiere `torch`, `transformers` y `matplotlib`. Es determinista (`SEED = 42`), y las salidas de esta parte (`outputs/raw/part0*.json`) sí se versionan: son pequeñas y se reproducen sin costo.
+
+**Elección de los prefijos (medida, no supuesta).** El plan sugiere `The capital of France is` como prefijo de alta confianza, pero GPT-2 no lo es: a T=1 su token más probable es `␣the` con 0.085 (`␣Paris` es el 5.º con 0.032) y su entropía es 8.65 bits, casi la de un prefijo incierto (9.33 bits). Por eso el script mide la entropía a T=1 de una lista fija de candidatos (`outputs/tables/part0_prefix_scan.csv`) y elige el de menor entropía: `Thank you very` (0.10 bits, `␣much` con 0.992). El prefijo de menor confianza es el del dominio, `A customer support ticket about an unexpected`.
+
+**0.a — temperatura** (`outputs/tables/part0_temperature.csv`, `outputs/raw/part0a.json`, figuras `part0_temperature_high_confidence.png`, `part0_temperature_low_confidence.png` y `part0_entropy_vs_temperature.png`):
+
+| Prefijo | T=0.1 | T=0.7 | T=1.0 | T=1.5 | T=2.0 |
+|---|---|---|---|---|---|
+| `Thank you very`: entropía (bits) | 0.00 | 0.01 | 0.10 | 2.15 | 9.77 |
+| `Thank you very`: núcleo top-p 0.9 | 1 | 1 | 1 | 12 | 14 537 |
+| `A customer support ticket…`: entropía (bits) | 0.95 | 6.39 | 9.33 | 12.24 | 13.54 |
+| `A customer support ticket…`: núcleo top-p 0.9 | 2 | 154 | 1 550 | 8 364 | 15 726 |
+
+La entropía y el núcleo crecen con la temperatura en ambos prefijos. El prefijo seguro se mantiene casi determinista hasta T=1 y solo se abre en T≥1.5; el incierto ya es amplio desde T=0.7. A T=2 ambos se acercan al máximo (el vocabulario tiene 50 257 tokens, log2 ≈ 15.6 bits).
+
+**0.b — las tres palancas** (`outputs/raw/part0b.json`; prefijo `A customer support ticket about an unexpected`, 40 tokens nuevos):
+
+1. `do_sample=False` con temperature 0.2 y 1.5: **salida idéntica** entre sí y con la decodificación greedy. La temperatura se ignora, y la librería lo avisa (`The following generation flags are not valid and may be ignored: ['temperature']`, emitido una sola vez).
+2. `top_k=1` con `do_sample=True`, 5 corridas con semillas 42-46: las 5 salidas son idénticas entre sí e idénticas a la de greedy.
+3. top-k=5 vs top-p=0.9 sobre la misma distribución (T=1): los conjuntos difieren en ambos prefijos, en sentido contrario. En `Thank you very` top-k conserva 5 tokens y top-p solo 1; en `A customer support ticket…` top-k conserva 5 y top-p 1 550. Es decir, top-k corta por cantidad fija y top-p se adapta a la confianza del modelo. Figura `part0_topk_vs_topp.png` (escala logarítmica, porque con un token dominante el resto sería invisible) y su tabla equivalente `part0_topk_vs_topp.csv`.
+4. Degeneración: 100 tokens en greedy entran en un bucle (`…about an unexpected problem.` repetido). La salida cruda está sin editar en `part0b.json`.
+
+Las definiciones de top-k y top-p de `src/distribution.py` se comprueban en los tests contra los `TopKLogitsWarper` y `TopPLogitsWarper` de `transformers`, que son los que aplica `generate()`.
+
+**0.c — límite del modelo base** (`outputs/raw/part0c.json`): con el mismo prompt de clasificación de la Parte 1 (10 casos, greedy, 60 tokens), GPT-2 base obtiene **0/10** respuestas parseables. No sigue la instrucción, solo continúa el texto: en 4 de 10 casos repite el ticket tal cual, en el caso 3 la palabra «account» aparece solo dentro de una frase repetida, y en el caso 9 escribe un comando `curl` que copia el formato `{"category": ...}` del prompt con un valor sin sentido. Un modelo base predice la continuación más probable; no está alineado para obedecer instrucciones, a diferencia de los modelos de la Parte 1.
+
+Las figuras usan una rampa azul ordinal para la temperatura y las ranuras categóricas 1-3 más gris para top-k / top-p, validadas con el validador de paletas antes de dibujar; la ranura aqua queda bajo 3:1 de contraste sobre el fondo claro, por eso cada figura va acompañada de su tabla CSV.
+
 ### Pruebas
 
 ```bash
@@ -210,7 +247,7 @@ Milestones 1 a 4 completos. Los demás experimentos aún no están implementados
 - [x] Milestone 4 — Parte 2.a: matriz de exposición de parámetros (3 modelos × 3 parámetros)
 - [x] Milestone 5 — Parte 2.b: barrido de temperature × top-p y de top-k (950 llamadas)
 - [x] Milestone 6 — Parte 3: prompting estructurado (4 variantes, 200 llamadas)
-- [ ] Milestone 7 — Parte 0: GPT-2 base
+- [x] Milestone 7 — Parte 0: GPT-2 base (0.a, 0.b y 0.c, 4 figuras)
 - [ ] Milestone 8 — Parte 4.a: reasoning effort
 - [ ] Milestone 9 — Parte 4.b: casos contaminados
 - [ ] Milestone 10 — agregación, gráficas y reporte
