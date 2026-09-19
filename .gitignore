@@ -28,6 +28,7 @@ env/
 .cache/
 outputs/raw/*
 !outputs/raw/.gitkeep
+!outputs/raw/part0*.json
 
 # Local working material (not versioned)
 taller-01-game-plan.md
