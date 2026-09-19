@@ -1,5 +1,5 @@
 def accuracy(records: list[dict]) -> float:
-    raise NotImplementedError
+    return sum(1 for r in records if r["correct"]) / len(records)
 
 
 def mean_latency(records: list[dict]) -> float:
