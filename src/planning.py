@@ -17,7 +17,7 @@ def key_of(call: dict) -> tuple:
         {
             "model_id": call["model_key"], "experiment": call["experiment"], "case_id": call["case"].id,
             "run": call["run"], "temperature": call["temperature"], "top_p": call["top_p"],
-            "top_k": call["top_k"], "effort": None, "prompt_variant": call.get("prompt_variant", "base"),
+            "top_k": call["top_k"], "effort": call.get("effort"), "prompt_variant": call.get("prompt_variant", "base"),
         }
     )
 

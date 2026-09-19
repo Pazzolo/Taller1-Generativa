@@ -70,8 +70,12 @@ def test_error_without_status_code_has_none_http_status(tmp_path):
 
 
 def test_programming_errors_are_not_swallowed(tmp_path):
+    from src.models.anthropic_runner import AnthropicRunner
+    from tests.fakes import FakeAnthropicClient
+
+    runner = AnthropicRunner("claude-x", client=FakeAnthropicClient())
     with pytest.raises(NotImplementedError):
-        run_case(openai_runner(), KEY, CASE, part="1", experiment="t", effort="low", results_path=tmp_path / "r.jsonl")
+        run_case(runner, KEY, CASE, part="1", experiment="t", effort="low", results_path=tmp_path / "r.jsonl")
     assert not (tmp_path / "r.jsonl").exists()
 
 

@@ -32,12 +32,16 @@ def test_temperature_and_top_p_are_forwarded_when_set():
     assert call["top_p"] == 0.9
 
 
-@pytest.mark.parametrize("kwargs", [{"effort": "low"}])
-def test_unsupported_parameters_fail_loudly_instead_of_being_dropped(kwargs):
+def test_effort_is_sent_as_reasoning_effort():
     client = FakeOpenAIClient()
-    with pytest.raises(NotImplementedError):
-        OpenAIRunner("gpt-4o-mini", client=client).generate("hello", **kwargs)
-    assert client.calls == []
+    OpenAIRunner("gpt-5.6-luna", client=client).generate("hello", effort="high")
+    assert client.calls[0]["reasoning_effort"] == "high"
+
+
+def test_no_reasoning_effort_when_effort_is_unset():
+    client = FakeOpenAIClient()
+    OpenAIRunner("gpt-5.6-luna", client=client).generate("hello")
+    assert "reasoning_effort" not in client.calls[0]
 
 
 def test_empty_content_becomes_empty_text():

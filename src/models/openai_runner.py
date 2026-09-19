@@ -25,10 +25,9 @@ class OpenAIRunner(ModelRunner):
         effort: str | None = None,
         structured_schema: dict | None = None,
     ) -> dict:
-        if effort is not None:
-            raise NotImplementedError("OpenAIRunner no soporta effort todavía.")
-
         params = {}
+        if effort is not None:
+            params["reasoning_effort"] = effort
         if temperature is not None:
             params["temperature"] = temperature
         if top_p is not None:

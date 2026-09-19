@@ -77,3 +77,9 @@ def test_estimate_scales_with_calls():
     rows = [{"part": "1", "model_id": KEY, "status": "ok", "case_id": "c1", "input_tokens": 100, "output_tokens": 10}]
     text = estimate(KEY, 10, rows)
     assert "estimated input tokens: 1,000" in text and "estimated output tokens: 100" in text
+
+
+def test_effort_is_part_of_the_resume_key():
+    base = plan(KEY, "e", [{"temperature": None, "top_p": None, "top_k": None, "effort": "low"}], load_cases()[:1], 1)[0]
+    other = {**base, "effort": "high"}
+    assert key_of(base) != key_of(other)
