@@ -1,0 +1,23 @@
+[
+  {
+    "id": "contaminated_01",
+    "split": "contaminated",
+    "trap": "distraction",
+    "ticket": "My cousin runs a small bakery and we were just chatting about how her new payment terminal keeps freezing and how the invoice software she bought was a waste of money. Anyway, the reason I am writing: I want to change the email address on my profile because I no longer use the old one.",
+    "expected": {"category": "account"}
+  },
+  {
+    "id": "contaminated_02",
+    "split": "contaminated",
+    "trap": "misleading_frame",
+    "ticket": "I am almost sure this is just a glitch on your servers, so I am writing to technical support, but the real issue is that I was charged twice for the same subscription this month and I want the duplicate payment refunded.",
+    "expected": {"category": "billing"}
+  },
+  {
+    "id": "contaminated_03",
+    "split": "contaminated",
+    "trap": "spurious_correlation",
+    "ticket": "I am a premium customer and my payment was successful, but the application crashes when I open the invoice page.",
+    "expected": {"category": "technical"}
+  }
+]
