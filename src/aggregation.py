@@ -1,4 +1,5 @@
 import csv
+import json
 from pathlib import Path
 
 from src.metrics import (
@@ -35,7 +36,15 @@ def latest_per_case(rows: list[dict]) -> list[dict]:
     return list(latest.values())
 
 
-def part1_table(rows: list[dict]) -> list[dict]:
+def load_notes(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def part1_table(rows: list[dict], notes: dict | None = None) -> list[dict]:
+    notes = notes or {}
     part1 = [r for r in rows if r.get("part") == "1" and r.get("model_id") in PRICES]
     table = []
     for model_key in PRICES:
@@ -57,7 +66,7 @@ def part1_table(rows: list[dict]) -> list[dict]:
                 "cost_usd_total": total_cost(model_rows),
                 "price_verified_at": PRICES[model_key]["verified_at"],
                 "parse_rate": parse_rate(model_rows),
-                "qualitative_notes": "",
+                "qualitative_notes": notes.get(model_key, ""),
             }
         )
     return table

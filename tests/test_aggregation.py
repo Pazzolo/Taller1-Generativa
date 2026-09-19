@@ -67,3 +67,22 @@ def test_write_csv_roundtrip(tmp_path):
         (loaded,) = list(csv.DictReader(f))
     assert list(loaded) == PART1_COLUMNS
     assert loaded["model"] == "propietario_economico" and float(loaded["accuracy"]) == 1.0
+
+
+def test_qualitative_notes_are_merged_by_model_key():
+    (entry,) = part1_table([row("propietario_economico", "c1")], {"propietario_economico": "JSON válido siempre"})
+    assert entry["qualitative_notes"] == "JSON válido siempre"
+
+
+def test_missing_notes_leave_the_column_empty():
+    (entry,) = part1_table([row("propietario_economico", "c1")], {"otro_modelo": "x"})
+    assert entry["qualitative_notes"] == ""
+
+
+def test_load_notes_handles_missing_file_and_reads_utf8(tmp_path):
+    from src.aggregation import load_notes
+
+    assert load_notes(tmp_path / "nope.json") == {}
+    path = tmp_path / "n.json"
+    path.write_text('{"m": "razonamiento facturado"}', encoding="utf-8")
+    assert load_notes(path) == {"m": "razonamiento facturado"}

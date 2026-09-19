@@ -3,8 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.aggregation import PART1_COLUMNS, part1_table, write_csv
-from src.config import TABLES_DIR
+from src.aggregation import PART1_COLUMNS, load_notes, part1_table, write_csv
+from src.config import PART1_NOTES_PATH, TABLES_DIR
 from src.exposure import part2a_table, write_part2a_csv
 from src.results import read_results
 
@@ -12,7 +12,7 @@ from src.results import read_results
 def main() -> None:
     rows = read_results()
     write_part2a_csv(part2a_table(rows), TABLES_DIR / "part2a.csv")
-    table = part1_table(rows)
+    table = part1_table(rows, load_notes(PART1_NOTES_PATH))
     path = TABLES_DIR / "part1.csv"
     write_csv(table, path)
 

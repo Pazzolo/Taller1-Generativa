@@ -11,6 +11,7 @@ RAW_DIR = OUTPUTS_DIR / "raw"
 TABLES_DIR = OUTPUTS_DIR / "tables"
 PLOTS_DIR = OUTPUTS_DIR / "plots"
 RESULTS_PATH = RAW_DIR / "results.jsonl"
+PART1_NOTES_PATH = ROOT / "report" / "part1_notes.json"
 
 SEED = 42
 
