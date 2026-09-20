@@ -100,7 +100,7 @@ Las generaciones locales de GPT-2 (Parte 0) y de `qwen3:1.7b` van en el mismo ar
 uv run -m src.experiments.part1                                        # mock: sin red ni costo
 uv run -m src.experiments.part1 --model propietario_economico --limit 1  # 1 caso real (gpt-4o-mini)
 uv run -m src.experiments.part1 --model propietario_economico            # los 10 casos oficiales
-uv run -m src.experiments.part1 --model propietario_grande               # gpt-5.5 (OpenAI)
+uv run -m src.experiments.part1 --model openai_razonamiento              # gpt-5.6-luna (OpenAI): la ranura «grande» con la clave del curso
 uv run -m src.experiments.part1 --model open_weight_pequeno              # qwen3:1.7b (Ollama local)
 uv run scripts/aggregate_results.py                                      # todas las tablas en outputs/tables/
 uv run scripts/generate_plots.py                                         # gráficas de la Parte 4 en outputs/plots/
@@ -110,21 +110,21 @@ Resultados de la Parte 1 (10 casos oficiales, `outputs/tables/part1.csv`):
 
 | Modelo | Exactitud | Latencia media | Tokens de salida (media) | Costo total |
 |---|---|---|---|---|
-| `gpt-5.5` | 10/10 | 0.97 s | 23.1 (9-10 de razonamiento) | $0.0097 |
-| `gpt-4o-mini` | 10/10 | 0.70 s | 6.0 | $0.00012 |
-| `qwen3:1.7b` (local) | 10/10 | 0.15 s | 7.0 | $0 |
+| `gpt-4o-mini` (`propietario_economico`) | 10/10 | 0.70 s | 6.0 | $0.00012 |
+| `gpt-5.6-luna` (`openai_razonamiento`) | 10/10 | 1.32 s | 8.0 (0 de razonamiento) | $0.00021 |
+| `qwen3:1.7b` (`open_weight_pequeno`, local) | 10/10 | 0.15 s | 7.0 | $0 |
 
 Los tres aciertan todo con JSON válido, así que este problema no discrimina entre modelos (efecto techo). La latencia de `qwen3:1.7b` no incluye red y su costo 0 no cuenta el hardware, por lo que no es comparable directamente con las de pago.
 
 Modelos de la Parte 1:
 
-| Clave | Modelo | Requisito |
+| Clave (tabla del curso) | Modelo | Requisito |
 |---|---|---|
-| `propietario_grande` | `gpt-5.5` | `OPENAI_API_KEY` en `.env` |
+| `openai_razonamiento` | `gpt-5.6-luna` | `OPENAI_API_KEY` en `.env` |
 | `propietario_economico` | `gpt-4o-mini` | `OPENAI_API_KEY` en `.env` |
 | `open_weight_pequeno` | `qwen3:1.7b` | Ollama en ejecución (`OLLAMA_HOST`) y `ollama pull qwen3:1.7b` |
 
-`propietario_grande` usa `gpt-5.5` en lugar del `claude-opus-4-8` de la tabla del curso (no había clave de Anthropic). Es un modelo de razonamiento: sus tokens de razonamiento se facturan como salida. Su precio ($5 / $30 por 1M, verificado el 2026-09-19) viene de la página de precios de OpenAI, no de la tabla del curso.
+Los tres modelos se eligen por su id de la tabla semestral del curso (anexo del enunciado); `src/pricing.py` trae las nueve filas con el precio y la fecha de verificación de cada una. Con la clave de OpenAI, la ranura «grande» de la Parte 1 la cubre `openai_razonamiento`, como dice el enunciado. `gpt-5.5` **no** es una fila de la tabla: se usó en una exploración inicial y sus 27 filas quedan en `results.jsonl` con la clave `extra_gpt55`, pero ninguna tabla ni el informe las usan (el precio de esa fila, $5 / $30 por 1M, salió de la página de OpenAI el 2026-09-19).
 
 Para `qwen3:1.7b` el razonamiento se desactiva (`think: false`) para que compare como un modelo instruct normal. La latencia de la primera llamada incluye la carga del modelo en memoria (`load_duration` queda en `raw_response`).
 
@@ -138,7 +138,7 @@ Cada llamada, exitosa o fallida, agrega una línea al JSONL (nunca se sobrescrib
 
 ```bash
 uv run -m src.experiments.part2a --dry-run                               # cuántas llamadas, sin llamar a la API
-uv run -m src.experiments.part2a --models propietario_grande propietario_economico open_weight_pequeno
+uv run -m src.experiments.part2a                                          # los tres modelos de la Parte 1
 ```
 
 Para cada modelo y parámetro se envía un valor bajo y uno alto (`temperature` 0.0 / 2.0, `top_p` 0.01 / 1.0, `top_k` 1 / 100), 5 corridas cada uno, con un prompt abierto (`probe`) donde el muestreo sí cambia la salida. Un HTTP 200 no basta para decir que el parámetro actúa; el estado se decide así:
@@ -148,17 +148,17 @@ Para cada modelo y parámetro se envía un valor bajo y uno alto (`temperature` 
 - `accepted_and_does_not_act`: sin errores y la diversidad no aumenta.
 - `inconclusive`: fallos que no son un rechazo del parámetro (sin conexión, 429, 5xx). No cuenta como rechazo.
 
-El criterio se apoya en solo 5 corridas por ajuste, así que es una evidencia, no una prueba. La columna `declared` es lo que documenta el proveedor; para `gpt-5.5` no encontré esa información en su página de modelo (`no documentado`). Si un ajuste falla, no se repite: repetir un rechazo no aporta información.
+El criterio se apoya en solo 5 corridas por ajuste, así que es una evidencia, no una prueba. La columna `declared` es el campo `parametros_expuestos` de la tabla del curso, con su vocabulario (`si`, `no`, `no_en_esta_fila`, `solo_valor_por_defecto`, `sin_verificar`). Si un ajuste falla, no se repite: repetir un rechazo no aporta información.
 
-Resultados actuales (2026-09-19, `outputs/tables/part2a.csv`):
+Resultados (2026-09-19 y 2026-09-20 para `openai_razonamiento`, `outputs/tables/part2a.csv`; entre paréntesis lo que declara la tabla):
 
 | Modelo | temperature | top_p | top_k |
 |---|---|---|---|
-| `gpt-4o-mini` | actúa (1 vs 5 salidas distintas) | actúa (1 vs 5) | rechazado, 400 |
-| `gpt-5.5` | rechazado, 400 | rechazado, 400 | rechazado, 400 |
-| `qwen3:1.7b` | actúa (1 vs 5) | actúa (1 vs 4) | actúa (1 vs 3) |
+| `gpt-4o-mini` | actúa, 1 vs 5 salidas distintas (`si`) | actúa, 1 vs 5 (`si`) | rechazado, 400 (`no`) |
+| `gpt-5.6-luna` | rechazado, 400 (`no_en_esta_fila`) | rechazado, 400 (`no_en_esta_fila`) | rechazado, 400 (`no`) |
+| `qwen3:1.7b` | actúa, 1 vs 5 (`si`) | actúa, 1 vs 4 (`si`) | actúa, 1 vs 3 (`si`) |
 
-`gpt-5.5` acepta solo los valores por defecto (`temperature=1`, `top_p=1.0`): los valores no predeterminados fallan con `Only the default (1) value is supported` o `not supported with this model`.
+Discrepancia con la tabla para `gpt-5.6-luna`: la tabla declara `temperature` y `top_p` como `no_en_esta_fila`, pero la API se comporta como `solo_valor_por_defecto`: para `temperature` el mensaje dice `Only the default (1) value is supported`, y `top_p=1.0` (el valor por defecto) se aceptó mientras que 0.01 se rechazó (`Unsupported parameter: 'top_p' is not supported with this model`). Esto responde comprobado contra `api.openai.com` a la pregunta que el enunciado deja abierta entre la documentación de Azure y la de OpenAI. Como comprobación adicional, `gpt-5.5` (fuera de la tabla) rechazó también los tres parámetros.
 
 ### Parte 2.b — barrido de decoding
 
@@ -220,7 +220,7 @@ uv run -m src.experiments.part0            # 0.a, 0.b y 0.c
 uv run -m src.experiments.part0 --only a   # solo una subparte (a, b o c)
 ```
 
-Usa `openai-community/gpt2` en CPU (no una variante instruct). La primera ejecución descarga el modelo (~550 MB); requiere `torch`, `transformers` y `matplotlib`. Es determinista (`SEED = 42`). Cada generación local (0.b y 0.c, 19 en total) es una fila de `results.jsonl` (parte `0`, modelo `gpt2_base`, costo 0.0), igual que una llamada a una API; `part0b.json` y `part0c.json` se reconstruyen a partir de esas filas, y una nueva corrida los deja idénticos. Los pasos de 0.a son pasadas hacia adelante para obtener la distribución (no generaciones) y se guardan en `part0a.json`. Las corridas repetidas omiten lo ya registrado.
+Usa `openai-community/gpt2` en CPU (no una variante instruct). La primera ejecución descarga el modelo (~550 MB); requiere `torch`, `transformers` y `matplotlib`. Es determinista (`SEED = 42`). Cada generación local (0.b y 0.c, 19 en total) es una fila de `results.jsonl` (parte `0`, modelo `base_local`, costo 0.0), igual que una llamada a una API; `part0b.json` y `part0c.json` se reconstruyen a partir de esas filas, y una nueva corrida los deja idénticos. El test 2 de 0.b (`top_k=1`) no solo compara textos: guarda los ids generados y comprueba, con los logits crudos (`output_logits`), que cada token es el argmax de su paso (`greedy_reference_ids` y `top_k_1_ids`). Los pasos de 0.a son pasadas hacia adelante para obtener la distribución (no generaciones) y se guardan en `part0a.json`. Las corridas repetidas omiten lo ya registrado.
 
 **Elección de los prefijos (medida, no supuesta).** El plan sugiere `The capital of France is` como prefijo de alta confianza, pero GPT-2 no lo es: a T=1 su token más probable es `␣the` con 0.085 (`␣Paris` es el 5.º con 0.032) y su entropía es 8.65 bits, casi la de un prefijo incierto (9.33 bits). Por eso el script mide la entropía a T=1 de una lista fija de candidatos (`outputs/tables/part0_prefix_scan.csv`) y elige el de menor entropía: `Thank you very` (0.10 bits, `␣much` con 0.992). El prefijo de menor confianza es el del dominio, `A customer support ticket about an unexpected`.
 
@@ -285,8 +285,8 @@ Lectura: el parámetro funciona, pero esta tarea es demasiado fácil para que el
 
 ```bash
 uv run -m src.experiments.part4b --dry-run          # llamadas planificadas (sin llamar a la API)
-uv run -m src.experiments.part4b                    # 3 casos x {low, high} x 10 corridas = 60 llamadas
-uv run -m src.experiments.part4b --levels xhigh     # comprobación adicional con el esfuerzo máximo aceptado
+uv run -m src.experiments.part4b                    # 3 casos x {none, xhigh} x 10 corridas = 60 llamadas
+uv run -m src.experiments.part4b --levels low high  # niveles intermedios (se corrieron antes, por el plan inicial)
 ```
 
 Tres casos fáciles, escritos a mano en `data/contaminated_cases.json`, cada uno con una trampa distinta. La etiqueta correcta es inequívoca en los tres: la dificultad está en la trampa, no en el criterio (un test comprueba que cada ticket trae, además de la señal correcta, señales de una categoría equivocada).
@@ -297,20 +297,20 @@ Tres casos fáciles, escritos a mano en `data/contaminated_cases.json`, cada uno
 | `contaminated_02` | Marco engañoso | `billing` | El usuario cree que es un fallo de los servidores y escribe a soporte técnico, pero lo que pide es el reembolso de un cobro duplicado. |
 | `contaminated_03` | Correlación espuria | `technical` | Menciona «premium», «pago» y «factura», pero el problema es que la aplicación se cierra. |
 
-Modelo `gpt-5.6-luna`, mismo prompt base que la Parte 1, 10 corridas por celda para ver variación. Los niveles `low` y `high` son los que pide el plan; `xhigh` es una comprobación adicional. Tablas: `outputs/tables/part4b.csv` (por caso y nivel) y `part4b_runs.csv` (una fila por llamada, con predicción, esperado, acierto y tokens de razonamiento).
+Modelo `gpt-5.6-luna`, mismo prompt base que la Parte 1, 10 corridas por celda para ver variación. El enunciado pide «el nivel más bajo y el más alto de esfuerzo»: para este modelo son `none` y `xhigh` (`max` lo rechaza la API); `low` y `high` son niveles intermedios. Tablas: `outputs/tables/part4b.csv` (por caso y nivel) y `part4b_runs.csv` (una fila por llamada, con predicción, esperado, acierto y tokens de razonamiento).
 
-| Caso | low: aciertos / razonamiento (media) | high | xhigh (extra) |
-|---|---|---|---|
-| Distracción | 10/10, 0 | 10/10, 1.6 | 10/10, 4.3 |
-| Marco engañoso | 10/10, 0 | 10/10, 4.5 | 10/10, 7.8 |
-| Correlación espuria | 10/10, 0 | 10/10, 9.2 | 10/10, 22.2 |
+| Caso | none: aciertos / razonamiento (media) | low | high | xhigh |
+|---|---|---|---|---|
+| Distracción | 10/10, 0 | 10/10, 0 | 10/10, 1.6 | 10/10, 4.3 |
+| Marco engañoso | 10/10, 0 | 10/10, 0 | 10/10, 4.5 | 10/10, 7.8 |
+| Correlación espuria | 10/10, 0 | 10/10, 0 | 10/10, 9.2 | 10/10, 22.2 |
 
-- **Las trampas no funcionaron:** 90 de 90 llamadas correctas, con predicciones idénticas en todas las corridas. No se observa escalado inverso.
+- **Las trampas no funcionaron:** 120 de 120 llamadas correctas (60 de 60 en los dos niveles extremos), con predicciones idénticas en todas las corridas. No se observa escalado inverso.
 - **El razonamiento sí crece con el esfuerzo** en los tres casos, pero es minúsculo: 28 tokens como máximo en una llamada. En cada nivel el caso con más tokens fue el de la correlación espuria y el de menos el de la distracción (por ejemplo, en `high`: 9.2, 4.5 y 1.6). Con 10 corridas por celda y esas cifras es un indicio, no una conclusión.
 - **Contraste con Gema et al. (2025)**, *Inverse Scaling in Test-Time Compute*: el artículo reporta que más razonamiento puede empeorar la exactitud: los modelos Claude se distraen cada vez más con información irrelevante, los modelos de la serie o de OpenAI resisten los distractores pero se sobreajustan al marco del problema, y los modelos pasan de priors razonables a correlaciones espurias. Este experimento no lo reproduce, pero tampoco lo contradice: sus tareas son otras (conteo con distractores, regresión con rasgos espurios, deducción, riesgos de IA), más difíciles, con presupuestos de razonamiento mucho más largos y otros modelos, mientras que aquí hay tres casos fáciles con exactitud del 100 % y decenas de tokens de razonamiento, así que ni siquiera se llega al régimen que estudian. Para detectar un efecto inverso harían falta casos donde el modelo falle sin trampas o con más razonamiento.
 - **Tres casos no demuestran una ley general**, ni a favor ni en contra.
 
-Costo total de la Parte 4.b: $0.003.
+Costo total de la Parte 4.b: $0.003 (120 llamadas).
 
 ### Informe
 
@@ -338,18 +338,18 @@ El dataset oficial queda congelado: los 10 casos con `"split": "official"` no ca
 
 ## Estado
 
-Los 10 milestones están completos. Pendiente solo lo que depende de quien entrega: completar el nombre en el informe, editarlo a la voz propia y contrastar con la tabla del curso los precios de `gpt-5.5` y del modelo local (el PDF del enunciado ya no está en la carpeta).
+Los 10 milestones están completos y el informe se revisó contra el enunciado original (`taller-01-foundation-models.pdf`). Pendiente solo lo que depende de quien entrega: quitar los corchetes del nombre en la portada, editar el texto a la voz propia, declarar la asistencia de IA si el curso lo pide y subir el repositorio a GitHub (los commits siguen locales; el remoto `origin` ya está configurado).
 
 - [x] Estructura del proyecto, `config`, `schemas`, `verifier`, `pricing`, `build_base_prompt`, interfaz `ModelRunner`
 - [x] Milestone 1 — `data/cases.json` + verificador + pruebas (41 tests)
 - [x] Milestone 2 — un modelo real (gpt-4o-mini) conectado y `results.jsonl` verificado (62 tests)
-- [x] Milestone 3 — Parte 1: comparación de tres modelos (gpt-5.5, gpt-4o-mini, qwen3:1.7b)
+- [x] Milestone 3 — Parte 1: comparación de tres modelos de la tabla del curso (gpt-4o-mini, gpt-5.6-luna, qwen3:1.7b)
 - [x] Milestone 4 — Parte 2.a: matriz de exposición de parámetros (3 modelos × 3 parámetros)
 - [x] Milestone 5 — Parte 2.b: barrido de temperature × top-p y de top-k (950 llamadas)
 - [x] Milestone 6 — Parte 3: prompting estructurado (4 variantes, 200 llamadas)
 - [x] Milestone 7 — Parte 0: GPT-2 base (0.a, 0.b y 0.c, 4 figuras)
 - [x] Milestone 8 — Parte 4.a: reasoning effort (5 niveles + control; 166 filas, una es el rechazo de `max`)
-- [x] Milestone 9 — Parte 4.b: casos contaminados (3 casos × 3 niveles × 10 corridas)
+- [x] Milestone 9 — Parte 4.b: casos contaminados (3 casos × 4 niveles × 10 corridas; los extremos del enunciado son `none` y `xhigh`)
 - [x] Milestone 10 — agregación, gráficas e informe (`report/report.md`)
 
 ## Convenciones de commits
