@@ -44,7 +44,7 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 │   ├── build_report.py       # genera report/report.md desde report_template.md y los resultados
 │   └── build_pdf.py          # convierte report.md en report/report.pdf (markdown-it + Chrome headless)
 ├── outputs/
-│   ├── raw/                  # results.jsonl (fuente de verdad, no versionado)
+│   ├── raw/                  # results.jsonl (fuente de verdad, una fila por llamada) y part0*.json
 │   ├── tables/
 │   └── plots/
 ├── report/                   # report_template.md (texto), report.md y report.pdf (generados), part1_notes.json
@@ -77,6 +77,22 @@ uv run -m src.experiments.part1        # equivalente a la primera
 ```
 
 Los experimentos escriben una fila por llamada en `outputs/raw/results.jsonl`. Las tablas y gráficas se derivan de ese archivo, nunca se copian a mano.
+
+**El archivo de resultados crudos** (`outputs/raw/results.jsonl`, una línea JSON por llamada o generación, nunca se sobrescribe) trae, entre otros, estos campos:
+
+| Campo | Contenido |
+|---|---|
+| `model_id`, `provider`, `model_name` | modelo (clave del proyecto, proveedor e identificador real) |
+| `temperature`, `top_p`, `top_k`, `effort` | parámetros enviados (`null` = valor por defecto del proveedor) |
+| `run`, `case_id`, `prompt_variant`, `part`, `experiment` | corrida, caso, variante de prompt y a qué parte pertenece |
+| `input_tokens`, `output_tokens`, `reasoning_tokens` | tokens que reporta el proveedor (`null` si no los expone; los de razonamiento van incluidos en los de salida) |
+| `latency_seconds` | tiempo medido alrededor de la llamada, con el mismo cronómetro en todos los proveedores |
+| `raw_output`, `final_answer` | salida cruda (y la respuesta final verificada, en chain-of-thought) |
+| `parse_ok`, `valid_schema`, `correct`, `predicted`, `expected` | resultado del verificador |
+| `cost_usd` | costo calculado con el precio con fecha de `src/pricing.py`; 0.0 en los modelos locales |
+| `status`, `error_type`, `error_message`, `http_status` | las llamadas fallidas se registran con el mensaje literal |
+
+Las generaciones locales de GPT-2 (Parte 0) y de `qwen3:1.7b` van en el mismo archivo con costo 0: una corrida gratis también es una corrida. Todas las tablas de `outputs/tables/` se derivan de este archivo con `scripts/aggregate_results.py`.
 
 `part1` acepta `--model` y `--limit`:
 
@@ -114,7 +130,7 @@ Para `qwen3:1.7b` el razonamiento se desactiva (`think: false`) para que compare
 
 La tabla toma la última fila por modelo y caso, así una corrida de humo previa no cuenta doble. Las llamadas fallidas cuentan como incorrectas en la exactitud pero no en latencia ni tokens. La columna `qualitative_notes` sale de `report/part1_notes.json` (una nota por modelo, escrita a mano), para que no se pierda al regenerar la tabla.
 
-Con `--model mock` los resultados van a `outputs/raw/mock_results.jsonl`; con un modelo real, a `outputs/raw/results.jsonl`. Ambos están ignorados por git. Las llamadas reales requieren `OPENAI_API_KEY` en `.env`; empezar siempre con `--limit 1`.
+Con `--model mock` los resultados van a `outputs/raw/mock_results.jsonl`; con un modelo real, a `outputs/raw/results.jsonl`. El de mock está ignorado por git; `results.jsonl` sí se versiona. Las llamadas reales requieren `OPENAI_API_KEY` en `.env`; empezar siempre con `--limit 1`.
 
 Cada llamada, exitosa o fallida, agrega una línea al JSONL (nunca se sobrescribe). Las fallas de API se registran con `status: "error"`, el mensaje literal y el `http_status`.
 
@@ -204,7 +220,7 @@ uv run -m src.experiments.part0            # 0.a, 0.b y 0.c
 uv run -m src.experiments.part0 --only a   # solo una subparte (a, b o c)
 ```
 
-Usa `openai-community/gpt2` en CPU (no una variante instruct). La primera ejecución descarga el modelo (~550 MB); requiere `torch`, `transformers` y `matplotlib`. Es determinista (`SEED = 42`), y las salidas de esta parte (`outputs/raw/part0*.json`) sí se versionan: son pequeñas y se reproducen sin costo.
+Usa `openai-community/gpt2` en CPU (no una variante instruct). La primera ejecución descarga el modelo (~550 MB); requiere `torch`, `transformers` y `matplotlib`. Es determinista (`SEED = 42`). Cada generación local (0.b y 0.c, 19 en total) es una fila de `results.jsonl` (parte `0`, modelo `gpt2_base`, costo 0.0), igual que una llamada a una API; `part0b.json` y `part0c.json` se reconstruyen a partir de esas filas, y una nueva corrida los deja idénticos. Los pasos de 0.a son pasadas hacia adelante para obtener la distribución (no generaciones) y se guardan en `part0a.json`. Las corridas repetidas omiten lo ya registrado.
 
 **Elección de los prefijos (medida, no supuesta).** El plan sugiere `The capital of France is` como prefijo de alta confianza, pero GPT-2 no lo es: a T=1 su token más probable es `␣the` con 0.085 (`␣Paris` es el 5.º con 0.032) y su entropía es 8.65 bits, casi la de un prefijo incierto (9.33 bits). Por eso el script mide la entropía a T=1 de una lista fija de candidatos (`outputs/tables/part0_prefix_scan.csv`) y elige el de menor entropía: `Thank you very` (0.10 bits, `␣much` con 0.992). El prefijo de menor confianza es el del dominio, `A customer support ticket about an unexpected`.
 
@@ -304,7 +320,7 @@ uv run scripts/build_report.py --author "Nombre Apellido" # opcional: reemplaza 
 uv run scripts/build_pdf.py                         # report.md -> report.pdf (A4, con figuras y numeración)
 ```
 
-El informe (`report/report.md`, 14 secciones más las respuestas de la Parte 5) **se genera**: el texto vive en `report/report_template.md` y cada número o tabla es una marca (`[[clave]]`, `[[tabla:nombre]]`) que el script rellena desde `outputs/tables/*.csv`, `outputs/raw/part0*.json` y `results.jsonl`, de modo que ninguna cifra se copia a mano. Para cambiar el texto se edita la plantilla, no `report.md`. El script falla si queda una marca sin resolver o si la respuesta 1 de la Parte 5 se sale de 100-150 palabras. Como usa `results.jsonl`, que no se versiona, hay que haber corrido los experimentos antes.
+El informe (`report/report.md`, 14 secciones más las respuestas de la Parte 5) **se genera**: el texto vive en `report/report_template.md` y cada número o tabla es una marca (`[[clave]]`, `[[tabla:nombre]]`) que el script rellena desde `outputs/tables/*.csv`, `outputs/raw/part0*.json` y `results.jsonl`, de modo que ninguna cifra se copia a mano. Para cambiar el texto se edita la plantilla, no `report.md`. El script falla si queda una marca sin resolver o si la respuesta 1 de la Parte 5 se sale de 100-150 palabras. Como `results.jsonl` está versionado, el informe se puede regenerar sin llamar a ninguna API.
 
 El PDF se genera con Chrome o Chromium en modo headless (`CHROME_BIN` si no está en una ruta habitual). Chrome a veces no termina tras imprimir, así que el script espera a que el archivo deje de crecer y lo cierra. El informe incluye seis figuras con pie, generadas a partir de las mismas salidas.
 
