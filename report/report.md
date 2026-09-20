@@ -2,14 +2,13 @@
 BORRADOR generado con scripts/build_report.py (los números salen de outputs/, no se escriben a mano).
 Antes de entregar: editar el texto a la voz propia, completar el nombre y declarar la asistencia de IA
 en el código, los casos y este borrador si la política del curso lo pide.
-Los bloques <!--W:nombre:mín:máx--> son respuestas con límite de palabras del enunciado; el script los cuenta.
 -->
 
 # Taller 01 — Foundation Models: comparación, decodificación y razonamiento
 
-**Estudiante:** [Paolo Arrata]  
+**Estudiante:** Paolo Arrata  
 **Curso:** MMIA 6013 — IA Generativa y Agentes, Universidad San Francisco de Quito  
-**Fecha de las corridas:** 2026-09-19 y 2026-09-20
+**Fecha de las ejecuciones:** 2026-09-19 y 2026-09-20
 
 ## 1. Introducción
 
@@ -33,11 +32,11 @@ Hay que decir de dónde salen: **todos los tickets son sintéticos**, redactados
 
 ## 4. Metodología
 
-**Un solo camino.** Cada llamada pasa por `run_case`: se construye el prompt, se llama al modelo, se verifica la respuesta con `verify_prediction`, se calcula el costo y se agrega una línea a `outputs/raw/results.jsonl`. Ese archivo es la fuente de verdad y nunca se sobrescribe; cada fila trae el modelo y el proveedor, el caso, la corrida, los parámetros (temperature, top-p, top-k, esfuerzo), la variante de prompt, los tokens de entrada, de salida y de razonamiento, la latencia, la salida cruda, si fue correcta y el costo. Las generaciones locales de la Parte 0 (GPT-2) van en el mismo archivo con costo cero: una corrida gratis también es una corrida. Las tablas y gráficas de este informe se generan a partir de él (y este texto, con `scripts/build_report.py`, para no copiar números a mano). Si una llamada falla, queda registrada como error con el mensaje literal y el código HTTP.
+**Un solo camino.** Cada llamada pasa por `run_case`: se construye el prompt, se llama al modelo, se verifica la respuesta con `verify_prediction`, se calcula el costo y se agrega una línea a `outputs/raw/results.jsonl`. Ese archivo es la fuente de verdad y nunca se sobrescribe; cada fila trae el modelo y el proveedor, el caso, la ejecución, los parámetros (temperature, top-p, top-k, esfuerzo), la variante de prompt, los tokens de entrada, de salida y de razonamiento, la latencia, la salida cruda, si fue correcta y el costo. Las generaciones locales de la Parte 0 (GPT-2) van en el mismo archivo con costo cero: una ejecución gratis también es una ejecución. Las tablas y gráficas de este informe se generan a partir de él (y este texto, con `scripts/build_report.py`, para no copiar números a mano). Si una llamada falla, queda registrada como error con el mensaje literal y el código HTTP.
 
 **Verificador.** Distingue tres fallos: salida que no es JSON, JSON con una categoría fuera del enum, y categoría válida pero incorrecta. Se mide entonces `parse_rate` (JSON parseable), formato válido (categoría dentro del enum) y exactitud, y las tres cosas pueden diferir.
 
-**Definiciones.** La exactitud de una celda es aciertos entre todas sus llamadas (un error de API cuenta como fallo). La estabilidad de un caso es la parte de sus corridas que coincide con la respuesta más frecuente; la de la celda es el promedio de los casos. Una salida inválida se cuenta como una sola respuesta.
+**Definiciones.** La exactitud de una celda es aciertos entre todas sus llamadas (un error de API cuenta como fallo). La estabilidad de un caso es la parte de sus ejecuciones que coincide con la respuesta más frecuente; la de la celda es el promedio de los casos. Una salida inválida se cuenta como una sola respuesta.
 
 **Qué mide la latencia.** Es el tiempo de pared de una llamada completa sin streaming: desde justo antes de enviar la petición hasta recibir la respuesta entera, medido con `time.perf_counter()` alrededor de la llamada y con el mismo cronómetro para todos los proveedores. Incluye la red (salvo en el modelo local) y no es el tiempo hasta el primer token.
 
@@ -101,7 +100,7 @@ Qué le hace la temperatura a la distribución. La temperatura divide los logits
 **0.b — las tres palancas** (prefijo `A customer support ticket about an unexpected`, 40 tokens nuevos, semilla fijada; las salidas crudas están en el Anexo A):
 
 1. **El interruptor.** Con `do_sample=False` y temperature 0.2 o 1.5, la salida es **idéntica** entre las dos y respecto de greedy (A.1 y A.2). Es así porque temperature solo reescala los logits antes de muestrear, y con `do_sample=False` no se muestrea: se toma el argmax, que no cambia al dividir todos los logits por un número positivo. La librería lo avisa: «The following generation flags are not valid and may be ignored: ['temperature']. Set `TRANSFORMERS_VERBOSITY=info` for more details.». Es el estado «aceptado y no actúa» de la Parte 2.a, observado en local.
-2. **`top_k=1` reproduce greedy.** Con `do_sample=True` y `top_k=1`, cinco corridas con semillas 42–46 dan salidas **idénticas entre sí** y **iguales a greedy**. Además de comparar textos se comparó contra la distribución: los ids generados coinciden con los de greedy en **5 de 5** corridas, y en **5 de 5** corridas cada uno de los 40 tokens es el argmax de los logits crudos de su paso (A.3).
+2. **`top_k=1` reproduce greedy.** Con `do_sample=True` y `top_k=1`, cinco ejecuciones con semillas 42–46 dan salidas **idénticas entre sí** y **iguales a greedy**. Además de comparar textos se comparó contra la distribución: los ids generados coinciden con los de greedy en **5 de 5** ejecuciones, y en **5 de 5** ejecuciones cada uno de los 40 tokens es el argmax de los logits crudos de su paso (A.3).
 3. **Dónde corta cada palanca.** Con top-k=5 y top-p=0.9 sobre la misma distribución (T=1) sobreviven conjuntos distintos, y en sentido contrario según la confianza del modelo: en el prefijo seguro top-k conserva **5** tokens y top-p **1**; en el incierto, top-k conserva **5** y top-p **1550**. Los dos prefijos sirven de ejemplo de que los conjuntos no coinciden: top-k corta por cantidad fija y top-p por masa fija (Figura 4, en escala logarítmica porque con un token dominante el resto sería invisible).
 4. **Degeneración.** Con greedy a 100 tokens la generación entra en un bucle: la frase «The customer support ticket about an unexpected problem» aparece **9 veces** (A.4, sin editar). Es la degeneración por repetición que describen Holtzman et al. (2020).
 
@@ -147,7 +146,7 @@ La latencia de `qwen3:1.7b` (0.15 s) no incluye red, así que no se compara dire
 
 ## 7. Parte 2.a — matriz de exposición de parámetros
 
-Para cada uno de los tres modelos de la Parte 1 y cada parámetro se probó un valor bajo y uno alto (`temperature` 0.0 y 2.0, `top_p` 0.01 y 1.0, `top_k` 1 y 100), con 5 corridas cada uno y un prompt abierto donde el muestreo sí cambia la salida. Un HTTP 200 no basta para decir que un parámetro actúa: el criterio fue que hubiera más salidas distintas con el valor alto que con el bajo, y si la API respondía 400 o 422 se registraba el rechazo con su mensaje literal. La columna «Declara la tabla» es el campo `parametros_expuestos` de la tabla semestral; la de «Observado» es lo que se midió, con la fecha de la prueba.
+Para cada uno de los tres modelos de la Parte 1 y cada parámetro se probó un valor bajo y uno alto (`temperature` 0.0 y 2.0, `top_p` 0.01 y 1.0, `top_k` 1 y 100), con 5 ejecuciones cada uno y un prompt abierto donde el muestreo sí cambia la salida. Un HTTP 200 no basta para decir que un parámetro actúa: el criterio fue que hubiera más salidas distintas con el valor alto que con el bajo, y si la API respondía 400 o 422 se registraba el rechazo con su mensaje literal. La columna «Declara la tabla» es el campo `parametros_expuestos` de la tabla semestral; la de «Observado» es lo que se midió, con la fecha de la prueba.
 
 | Modelo | Parámetro | Declara la tabla | Observado | HTTP | Salidas distintas (bajo / alto) | Fecha de la prueba |
 |---|---|---|---|---|---|---|
@@ -170,13 +169,13 @@ De las 9 celdas, **5 aceptan y actúan** y **4 se rechazan**. `propietario_econo
 
 **Discrepancia con la tabla, con fecha (2026-09-20).** Para `openai_razonamiento` la tabla declara `temperature` y `top_p` como `no_en_esta_fila`: el proveedor los expone en otra fila y los rechaza en ésta. Con la clave del curso se comprobó contra `api.openai.com` y el resultado es más matizado: la API los rechaza, pero para `temperature` el mensaje dice que el único valor admitido es el por defecto (1), y `top_p=1.0`, que es el valor por defecto, se aceptó (celda `top_p`: 0 / 5 salidas distintas, bajo / alto), mientras que 0.01 se rechazó. Es decir, se comporta como `solo_valor_por_defecto`. Esto también cierra el hueco que plantea el enunciado entre la documentación de Azure y la de OpenAI: la API de OpenAI rechaza estos parámetros para este modelo. `top_k` se rechaza como parámetro desconocido, como declara la tabla. Como comprobación adicional, el modelo `gpt-5.5` (fuera de la tabla del curso) rechazó también 3 de sus 3 celdas.
 
-Sobre la ortografía: OpenAI rechaza los parámetros desconocidos con un 400, así que un nombre mal escrito no pasaría por «aceptado»; en Ollama, que acepta claves inventadas con 200, los tres nombres (`temperature`, `top_p`, `top_k`) se comprobaron con dos valores extremos y varias corridas y sus efectos se ven en la columna de salidas distintas.
+Sobre la ortografía: OpenAI rechaza los parámetros desconocidos con un 400, así que un nombre mal escrito no pasaría por «aceptado»; en Ollama, que acepta claves inventadas con 200, los tres nombres (`temperature`, `top_p`, `top_k`) se comprobaron con dos valores extremos y varias ejecuciones y sus efectos se ven en la columna de salidas distintas.
 
 **Conclusión de la Parte 2.a.** Un parámetro documentado no es un parámetro que actúa, y uno que se rechaza depende del modelo y no del proveedor: dos modelos de OpenAI dieron resultados opuestos para `temperature` y `top_p`. La matriz describe el estado de un servicio en una fecha; por eso lleva fecha.
 
 ## 8. Parte 2.b — barrido de decoding
 
-Se barrieron 15 celdas de temperature × top-p sobre `propietario_economico` (la matriz de 2.a lo marca «aceptado y actúa» en los dos parámetros; 10 casos × 5 corridas por celda, 750 llamadas) y, aparte, top-k sobre `open_weight_pequeno` (200 llamadas), porque OpenAI no expone `top_k`. Para cada celda se registró la exactitud media sobre los 10 casos, la estabilidad (de las 5 corridas de un mismo caso, cuántas dieron la misma respuesta, promediada) y la longitud media de la salida en tokens.
+Se barrieron 15 celdas de temperature × top-p sobre `propietario_economico` (la matriz de 2.a lo marca «aceptado y actúa» en los dos parámetros; 10 casos × 5 ejecuciones por celda, 750 llamadas) y, aparte, top-k sobre `open_weight_pequeno` (200 llamadas), porque OpenAI no expone `top_k`. Para cada celda se registró la exactitud media sobre los 10 casos, la estabilidad (de las 5 ejecuciones de un mismo caso, cuántas dieron la misma respuesta, promediada) y la longitud media de la salida en tokens.
 
 | Temperature | Top-p | Llamadas | Exactitud | Estabilidad | Tokens de salida (media) |
 |---|---|---|---|---|---|
@@ -196,7 +195,7 @@ Se barrieron 15 celdas de temperature × top-p sobre `propietario_economico` (la
 | 1.5 | 0.9 | 50 | 1.00 | 1.00 | 6.00 |
 | 1.5 | 1.0 | 50 | 1.00 | 1.00 | 5.98 |
 
-**En las 15 celdas la exactitud mínima fue 1.00 y la estabilidad mínima 1.00**, con 0 errores. La única diferencia visible fue una salida con JSON compacto en la celda de temperatura 1.5 y top-p 1.0 (5.98 tokens de salida en media), con la misma categoría. Con temperatura 0 las 5 corridas de cada caso coincidieron en todas las celdas (estabilidad 1.00): no se observó la irreproducibilidad que el enunciado advierte que puede ocurrir, pero eso no autoriza a suponerla ausente en otro momento o modelo. El barrido de top-k, a temperatura fija de 0.7 y con un baseline greedy:
+**En las 15 celdas la exactitud mínima fue 1.00 y la estabilidad mínima 1.00**, con 0 errores. La única diferencia visible fue una salida con JSON compacto en la celda de temperatura 1.5 y top-p 1.0 (5.98 tokens de salida en media), con la misma categoría. Con temperatura 0 las 5 ejecuciones de cada caso coincidieron en todas las celdas (estabilidad 1.00): no se observó la irreproducibilidad que el enunciado advierte que puede ocurrir, pero eso no autoriza a suponerla ausente en otro momento o modelo. El barrido de top-k, a temperatura fija de 0.7 y con un baseline greedy:
 
 | top-k | Temperatura | Llamadas | Exactitud | Estabilidad | Tokens de salida (media) | Coincide con greedy |
 |---|---|---|---|---|---|---|
@@ -205,15 +204,15 @@ Se barrieron 15 celdas de temperature × top-p sobre `propietario_economico` (la
 | 5 | 0.7 | 50 | 1.00 | 1.00 | 7.0 | — |
 | 40 | 0.7 | 50 | 0.98 | 0.98 | 7.0 | — |
 
-Con top-k=1 la salida coincide con la del baseline greedy en una proporción de **1.00** de los casos, así que top-k=1 reproduce greedy (misma salida en las 5 corridas). Con top-k=40 hubo un fallo en 50 llamadas (exactitud 0.98).
+Con top-k=1 la salida coincide con la del baseline greedy en una proporción de **1.00** de los casos, así que top-k=1 reproduce greedy (misma salida en las 5 ejecuciones). Con top-k=40 hubo un fallo en 50 llamadas (exactitud 0.98).
 
 Qué cambia al pasar de una distribución a una exactitud, respecto de la Parte 0.b: allí se compara una distribución completa sobre 50 257 tokens y los cortes son visibles; aquí lo que se mide es una etiqueta de un solo token con la masa muy concentrada, y por eso ningún corte cambia la respuesta: en el prefijo seguro de la Parte 0 la entropía es casi cero hasta T=1. No contradice la Parte 2.a, donde el texto era libre y los parámetros sí cambiaron la salida. Un fallo aislado a top-k=40 y una variación de formato en 950 llamadas son eventos únicos; con estos conteos no alcanzan para hablar de tendencia.
 
-**Conclusión.** La temperatura divide los logits antes del softmax: por debajo de 1 acentúa las diferencias y concentra la masa en el token más probable, y por encima de 1 las atenúa y reparte la masa entre más tokens (en la Parte 0 la entropía del prefijo seguro pasó de 0.00 a 9.77 bits entre T=0.1 y T=2.0). Para mi tarea, extraer una etiqueta, elegiría temperatura 0 con top-p 1.0: las 15 celdas dieron exactitud y estabilidad 1.00, así que no hay ganancia en aceptar variación, y T=0 es la rama argmax, la más simple de justificar. No es una promesa de reproducibilidad en una API; aquí las 5 corridas coincidieron y no se puede extrapolar. Si la tarea fuera generar tres titulares alternativos elegiría temperatura cerca de 0.7 con top-p 0.9: en la Parte 2.a un ajuste bajo dio 1 salida distinta en 5 corridas y uno alto, 5 de 5, y para tener alternativas hace falta que las muestras difieran, sin llegar a un extremo que rompa el texto (a temperatura 1.5 con top-p 1.0 ya apareció una variación de formato). Con 5 corridas es evidencia, no prueba.
+**Conclusión.** La temperatura divide los logits antes del softmax: por debajo de 1 acentúa las diferencias y concentra la masa en el token más probable, y por encima de 1 las atenúa y reparte la masa entre más tokens (en la Parte 0 la entropía del prefijo seguro pasó de 0.00 a 9.77 bits entre T=0.1 y T=2.0). Para mi tarea, extraer una etiqueta, elegiría temperatura 0 con top-p 1.0: las 15 celdas dieron exactitud y estabilidad 1.00, así que no hay ganancia en aceptar variación, y T=0 es la rama argmax, la más simple de justificar. No es una promesa de reproducibilidad en una API; aquí las 5 ejecuciones coincidieron y no se puede extrapolar. Si la tarea fuera generar tres titulares alternativos elegiría temperatura cerca de 0.7 con top-p 0.9: en la Parte 2.a un ajuste bajo dio 1 salida distinta en 5 ejecuciones y uno alto, 5 de 5, y para tener alternativas hace falta que las muestras difieran, sin llegar a un extremo que rompa el texto (a temperatura 1.5 con top-p 1.0 ya apareció una variación de formato). Con 5 ejecuciones es evidencia, no prueba.
 
 ## 9. Parte 3 — prompting estructurado
 
-Se compararon cuatro variantes sobre `propietario_economico` (el mismo modelo propietario de la Parte 1 con salida estructurada de esquema estricto), los mismos 10 casos y 5 corridas (200 llamadas): zero-shot (solo la instrucción); few-shot con tres ejemplos propios; chain-of-thought (se pide razonar paso a paso y dar el JSON en la última línea; se verifica solo la respuesta final, pero la salida completa se conserva); y salida estructurada con un esquema JSON estricto que impone la API. La respuesta completa de cada variante para un caso está en el Anexo C. Los costos de entrada y de salida se reportan por separado porque no cuestan lo mismo.
+Se compararon cuatro variantes sobre `propietario_economico` (el mismo modelo propietario de la Parte 1 con salida estructurada de esquema estricto), los mismos 10 casos y 5 ejecuciones (200 llamadas): zero-shot (solo la instrucción); few-shot con tres ejemplos propios; chain-of-thought (se pide razonar paso a paso y dar el JSON en la última línea; se verifica solo la respuesta final, pero la salida completa se conserva); y salida estructurada con un esquema JSON estricto que impone la API. La respuesta completa de cada variante para un caso está en el Anexo C. Los costos de entrada y de salida se reportan por separado porque no cuestan lo mismo.
 
 | Variante | Exactitud | Formato válido | Parse rate | Tokens entrada | Tokens salida | Costo entrada | Costo salida | Costo total | Frente a zero-shot |
 |---|---|---|---|---|---|---|---|---|---|
@@ -230,7 +229,7 @@ Se compararon cuatro variantes sobre `propietario_economico` (el mismo modelo pr
 
 ## 10. Parte 4.a — esfuerzo de razonamiento
 
-Modelo `openai_razonamiento` (`gpt-5.6-luna`, USD 0.2 / 1.2 por millón, precio verificado el 2026-09-18). Se averiguó qué niveles acepta, como en la Parte 2.a, y se corrieron los 10 casos en los 5 niveles aceptados (3 corridas por nivel, 150 llamadas correctas). El costo es el de los tokens de salida totales, con el razonamiento incluido, al precio de la fila; los tokens de razonamiento salen de `usage.completion_tokens_details.reasoning_tokens` y los visibles son el total menos esos.
+Modelo `openai_razonamiento` (`gpt-5.6-luna`, USD 0.2 / 1.2 por millón, precio verificado el 2026-09-18). Se averiguó qué niveles acepta, como en la Parte 2.a, y se corrieron los 10 casos en los 5 niveles aceptados (3 ejecuciones por nivel, 150 llamadas correctas). El costo es el de los tokens de salida totales, con el razonamiento incluido, al precio de la fila; los tokens de razonamiento salen de `usage.completion_tokens_details.reasoning_tokens` y los visibles son el total menos esos.
 
 | Esfuerzo | Llamadas | Exactitud | Tokens de razonamiento | Salida visible | Salida total | Latencia media (s) | Costo por llamada | Costo del nivel |
 |---|---|---|---|---|---|---|---|---|
@@ -261,9 +260,9 @@ Hay tres hallazgos. Primero, **`max` no existe para este modelo**: la tabla del 
 
 Para el diseño del enunciado (3 niveles × 10 casos más 6 llamadas contaminadas) la estimación es de **$0.176**; el gasto medido de toda la Parte 4 (4.a y 4.b, con más niveles y el control) fue de **$0.0080**, unas 22 veces menos. Hay que ser honesto con el orden: esta estimación se calculó al redactar el informe y no antes del barrido; antes de él solo se hizo un piloto de 1 caso en los 6 niveles, que ya mostró 0 tokens de razonamiento, y un `--dry-run` que no puede estimar los tokens de razonamiento. No se corrió un nivel completo antes de los tres, como pide la regla 2, porque el piloto ya mostraba que el contador estaba en cero. La medición se separa del supuesto justo en el término que el enunciado marca como el menos predecible: en el nivel alto se suponían 6400 tokens de razonamiento y se midieron 0.37. Es un hallazgo de esta parte.
 
-Con un piloto de un caso los cinco niveles dieron cero tokens de razonamiento, y eso podía significar que el parámetro no hacía nada (el caso «aceptado y no actúa»). Se diagnosticó mirando el contador y no la prosa de la respuesta, con un acertijo de control (el del bate y la pelota, 3 corridas por nivel):
+Con un piloto de un caso los cinco niveles dieron cero tokens de razonamiento, y eso podía significar que el parámetro no hacía nada (el caso «aceptado y no actúa»). Se diagnosticó mirando el contador y no la prosa de la respuesta, con un acertijo de control (el del bate y la pelota, 3 ejecuciones por nivel):
 
-| Esfuerzo | Corridas | Razonamiento (media) | Salida total (media) | Respuesta correcta |
+| Esfuerzo | Ejecuciones | Razonamiento (media) | Salida total (media) | Respuesta correcta |
 |---|---|---|---|---|
 | none | 3 | 0.0 | 4.0 | 1.00 |
 | low | 3 | 26.0 | 36.0 | 1.00 |
@@ -271,15 +270,15 @@ Con un piloto de un caso los cinco niveles dieron cero tokens de razonamiento, y
 | high | 3 | 20.3 | 30.3 | 1.00 |
 | xhigh | 3 | 49.0 | 59.0 | 1.00 |
 
-El dial sí actúa: de 0 tokens de razonamiento en `none` a 49 en `xhigh`. No es monótono entre niveles intermedios (26 / 36 / 20 / 49 en `low`, `medium`, `high`, `xhigh`), pero con tres corridas por nivel solo se sostiene la tendencia general. El acertijo se resolvió bien incluso sin razonamiento.
+El dial sí actúa: de 0 tokens de razonamiento en `none` a 49 en `xhigh`. No es monótono entre niveles intermedios (26 / 36 / 20 / 49 en `low`, `medium`, `high`, `xhigh`), pero con tres ejecuciones por nivel solo se sostiene la tendencia general. El acertijo se resolvió bien incluso sin razonamiento.
 
 **Conclusión.** Mi punto de rendimientos decrecientes está en el primer escalón: con exactitud 1.00 desde `none`, ningún nivel compró exactitud, así que no puedo decir «a partir de tal nivel, cada punto adicional me costó X USD»; el costo por punto de exactitud no está definido porque el aumento de exactitud es cero. Lo que sí se puede decir con cifras es lo que costó no ganar nada: de `none` a `xhigh` el costo por llamada subió de $0.0000208 a $0.0000237 (14 %), con saltos de $0.0000007 de `medium` a `high` y de $0.0000022 de `high` a `xhigh`. La medición también se separó del supuesto del enunciado: en el nivel alto se suponían 6400 tokens de razonamiento y se midieron 0.37. La curva es plana, y eso es un resultado: para esta tarea el nivel se elige por medición y no se sube por defecto, así que usaría `none`. El control con el acertijo muestra que el dial funciona, de modo que la curva plana describe a la tarea y no al parámetro; no se puede extender a tareas que sí exijan razonar.
 
 ## 11. Parte 4.b — el caso donde pensar más podría hacer daño
 
-Se escribieron tres casos fáciles con una trampa cada uno: una **distracción** (una anécdota larga con palabras de pagos y facturas, pero lo que se pide es cambiar el correo del perfil), un **marco engañoso** (el usuario cree que es un fallo técnico, pero pide el reembolso de un cobro duplicado) y una **correlación espuria** (menciona «premium», «pago» y «factura», pero el problema es que la aplicación se cierra; sigue el ejemplo del plan). La categoría correcta es inequívoca en los tres, y una prueba automática comprueba que cada ticket trae señales de una categoría equivocada. Se corrieron en el nivel más bajo (`none`) y en el más alto (`xhigh`) de esfuerzo, con 10 corridas por celda; `low` y `high` se corrieron antes, por el plan inicial, y se dejan como niveles intermedios.
+Se escribieron tres casos fáciles con una trampa cada uno: una **distracción** (una anécdota larga con palabras de pagos y facturas, pero lo que se pide es cambiar el correo del perfil), un **marco engañoso** (el usuario cree que es un fallo técnico, pero pide el reembolso de un cobro duplicado) y una **correlación espuria** (menciona «premium», «pago» y «factura», pero el problema es que la aplicación se cierra; sigue el ejemplo del plan). La categoría correcta es inequívoca en los tres, y una prueba automática comprueba que cada ticket trae señales de una categoría equivocada. Se corrieron en el nivel más bajo (`none`) y en el más alto (`xhigh`) de esfuerzo, con 10 ejecuciones por celda; `low` y `high` se corrieron antes, por el plan inicial, y se dejan como niveles intermedios.
 
-| Caso | Trampa | Esfuerzo | Corridas | Aciertos | Razonamiento (media) | Razonamiento (máx.) |
+| Caso | Trampa | Esfuerzo | Ejecuciones | Aciertos | Razonamiento (media) | Razonamiento (máx.) |
 |---|---|---|---|---|---|---|
 | contaminated_01 | distracción | none | 10 | 1.00 | 0.0 | 0 |
 | contaminated_01 | distracción | low | 10 | 1.00 | 0.0 | 0 |
@@ -294,7 +293,7 @@ Se escribieron tres casos fáciles con una trampa cada uno: una **distracción**
 | contaminated_03 | correlación espuria | high | 10 | 1.00 | 9.2 | 19 |
 | contaminated_03 | correlación espuria | xhigh | 10 | 1.00 | 22.2 | 28 |
 
-**En los dos niveles extremos, 60 de 60 llamadas fueron correctas, y en total 120 de 120: pensar más no empeoró nada.** Las predicciones fueron idénticas entre corridas. El razonamiento sí crece con el esfuerzo en los tres casos, pero es minúsculo: el máximo fue de 28 tokens en una llamada. En cada nivel con razonamiento el caso con más tokens fue el de la correlación espuria y el de menos el de la distracción; con 10 corridas por celda es un indicio, no una conclusión.
+**En los dos niveles extremos, 60 de 60 llamadas fueron correctas, y en total 120 de 120: pensar más no empeoró nada.** Las predicciones fueron idénticas entre ejecuciones. El razonamiento sí crece con el esfuerzo en los tres casos, pero es minúsculo: el máximo fue de 28 tokens en una llamada. En cada nivel con razonamiento el caso con más tokens fue el de la correlación espuria y el de menos el de la distracción; con 10 ejecuciones por celda es un indicio, no una conclusión.
 
 **Contraste con Gema et al. (2025).** El artículo *Inverse Scaling in Test-Time Compute* (TMLR, 12/2025) reporta que más razonamiento puede empeorar la exactitud: los modelos Claude se distraen cada vez más con información irrelevante, los modelos de la serie o de OpenAI resisten los distractores pero se sobreajustan al marco del problema, y los modelos pasan de priors razonables a correlaciones espurias. Este experimento no lo reproduce, pero tampoco lo contradice. Las tareas del artículo son otras (conteo con distractores, regresión con rasgos espurios, deducción, riesgos de IA), más difíciles, con presupuestos de razonamiento mucho más largos y otros modelos; aquí hay tres casos fáciles con exactitud del 100 % y decenas de tokens de razonamiento, así que ni siquiera se llega al régimen que estudian. Para detectar un efecto inverso harían falta casos que el modelo pueda fallar. **Tres casos no demuestran una ley**, ni a favor ni en contra; lo que sí deja el ejercicio es el hábito: el nivel de esfuerzo se elige por tarea y se mide, no se sube por defecto.
 
@@ -343,7 +342,7 @@ Cada parte tiene su propia conclusión arriba. En conjunto:
 3. **Un parámetro puede actuar y no importar.** En texto libre temperature y top-p sí cambian la salida; en clasificación no cambian la respuesta, porque la decisión es un token dominante.
 4. **El razonamiento existe pero casi no se usa en tareas fáciles.** El dial de esfuerzo funciona (se comprobó con un acertijo) y su costo es pequeño aquí, pero no compró exactitud, ni siquiera frente a las trampas de la 4.b.
 
-**Lo que no se puede concluir.** Que los modelos «sean equivalentes» o que el muestreo, el razonamiento o chain-of-thought «no sirvan»: solo que no aportan en este problema, con estos modelos y a esta fecha. Los tickets son sintéticos y fáciles. Las cinco corridas por ajuste y las diez por celda dan evidencia pero no pruebas; las desviaciones observadas en el barrido son eventos únicos. La estimación de presupuesto de la Parte 4 se hizo después del barrido. Los precios de los modelos de la tabla se leyeron de ella, pero los resultados de APIs pueden cambiar con el tiempo. Para ver diferencias de verdad harían falta casos que los modelos puedan fallar.
+**Lo que no se puede concluir.** Que los modelos «sean equivalentes» o que el muestreo, el razonamiento o chain-of-thought «no sirvan»: solo que no aportan en este problema, con estos modelos y a esta fecha. Los tickets son sintéticos y fáciles. Las cinco ejecuciones por ajuste y las diez por celda dan evidencia pero no pruebas; las desviaciones observadas en el barrido son eventos únicos. La estimación de presupuesto de la Parte 4 se hizo después del barrido. Los precios de los modelos de la tabla se leyeron de ella, pero los resultados de APIs pueden cambiar con el tiempo. Para ver diferencias de verdad harían falta casos que los modelos puedan fallar.
 
 ## 14. Reproducibilidad
 
@@ -354,10 +353,11 @@ uv venv --python 3.11
 uv pip install -r requirements.txt
 cp .env.example .env            # completar OPENAI_API_KEY
 uv run pytest                   # pruebas
-uv run scripts/run_all.py --part 0   # y 1, 2a, 2b, 3, 4a, 4b
+uv run scripts/run_all.py --all --dry-run   # cuenta y estima sin llamar a APIs
+uv run scripts/run_all.py --all             # o una parte: --part 0, 1, 2a, 2b, 3, 4a, 4b
 uv run scripts/aggregate_results.py
 uv run scripts/generate_plots.py
-uv run scripts/build_report.py && uv run scripts/build_pdf.py
+uv run scripts/build_report.py && uv run scripts/build_pdf.py && uv run scripts/build_docx.py
 ```
 
 Costo de las llamadas a APIs (todo el proyecto):
@@ -372,7 +372,7 @@ Costo de las llamadas a APIs (todo el proyecto):
 | Parte 4.a | 166 | 1 | $0.0040 |
 | Parte 4.b | 120 | 0 | $0.0040 |
 
-Todo está versionado. `outputs/raw/results.jsonl` (una fila por llamada, con las 25 generaciones locales de la Parte 0 incluidas) es la fuente de la que salen las tablas, las gráficas de la Parte 4 y este texto, así que se pueden regenerar sin llamar a ninguna API (`aggregate_results.py`, `generate_plots.py`, `build_report.py`). Volver a producir el archivo desde cero exige volver a correr los experimentos; los que llaman a APIs son reanudables y el costo total fue $0.053. Las salidas de la Parte 0 (`part0*.json`) se reconstruyen a partir de esas filas y, al repetir la corrida, resultaron idénticas. No hay claves en el repositorio; se revisó el historial de git y los archivos con una búsqueda de cadenas con formato de clave y no apareció ninguna.
+Todo está versionado. `outputs/raw/results.jsonl` (una fila por llamada, con las 25 generaciones locales de la Parte 0 incluidas) es la fuente de la que salen las tablas, las gráficas de la Parte 4 y este texto, así que se pueden regenerar sin llamar a ninguna API (`aggregate_results.py`, `generate_plots.py`, `build_report.py`). Volver a producir el archivo desde cero exige volver a correr los experimentos; los que llaman a APIs son reanudables y el costo total fue $0.053. Las salidas de la Parte 0 (`part0*.json`) se reconstruyen a partir de esas filas y, al repetir la ejecución, resultaron idénticas. No hay claves en el repositorio; se revisó el historial de git y los archivos con una búsqueda de cadenas con formato de clave y no apareció ninguna.
 
 ## Anexo A — Salidas crudas de la Parte 0.b
 
@@ -406,7 +406,7 @@ The customer support ticket about an unexpected problem.
 The customer support
 ```
 
-**A.3 — `do_sample=True`, `top_k=1`, semilla 42** (las otras cuatro corridas, con semillas 43–46, dieron exactamente la misma salida; los ids generados coinciden con los de greedy en 5 de 5 corridas):
+**A.3 — `do_sample=True`, `top_k=1`, semilla 42** (las otras cuatro ejecuciones, con semillas 43–46, dieron exactamente la misma salida; los ids generados coinciden con los de greedy en 5 de 5 ejecuciones):
 
 ```text
  problem.
@@ -605,19 +605,19 @@ $6 = $6.99
 
 ## Anexo C — Respuestas completas de la Parte 3 (un caso por variante)
 
-**C.1 — `zero_shot`** (caso `case_01`, corrida 1; 53 tokens de entrada, 6 de salida):
+**C.1 — `zero_shot`** (caso `case_01`, ejecución 1; 53 tokens de entrada, 6 de salida):
 
 ```text
 {"category": "billing"}
 ```
 
-**C.2 — `few_shot`** (caso `case_01`, corrida 1; 129 tokens de entrada, 6 de salida):
+**C.2 — `few_shot`** (caso `case_01`, ejecución 1; 129 tokens de entrada, 6 de salida):
 
 ```text
 {"category": "billing"}
 ```
 
-**C.3 — `cot`** (caso `case_01`, corrida 1; 78 tokens de entrada, 118 de salida):
+**C.3 — `cot`** (caso `case_01`, ejecución 1; 78 tokens de entrada, 118 de salida):
 
 ```text
 Let's analyze the customer's issue step by step:
@@ -634,7 +634,7 @@ Final answer:
 '''
 ```
 
-**C.4 — `structured`** (caso `case_01`, corrida 1; 76 tokens de entrada, 5 de salida):
+**C.4 — `structured`** (caso `case_01`, ejecución 1; 76 tokens de entrada, 5 de salida):
 
 ```text
 {"category":"billing"}
