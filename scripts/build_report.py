@@ -78,6 +78,7 @@ def build_values() -> tuple[dict, dict]:
     # --- totales
     v["n_rows"] = f"{len(real):,}".replace(",", " ")
     v["n_errors"] = str(sum(r["status"] != "ok" for r in real))
+    v["n_part0"] = str(sum(r["part"] == "0" for r in real))
     v["total_cost"] = usd(sum(r.get("cost_usd") or 0 for r in real), 3)
     by_part = {}
     for r in real:
@@ -85,7 +86,7 @@ def build_values() -> tuple[dict, dict]:
         entry[0] += 1
         entry[1] += r["status"] != "ok"
         entry[2] += r.get("cost_usd") or 0
-    labels = {"1": "Parte 1", "2a": "Parte 2.a", "2b": "Parte 2.b", "3": "Parte 3", "4a": "Parte 4.a", "4b": "Parte 4.b"}
+    labels = {"0": "Parte 0 (GPT-2 local)", "1": "Parte 1", "2a": "Parte 2.a", "2b": "Parte 2.b", "3": "Parte 3", "4a": "Parte 4.a", "4b": "Parte 4.b"}
     tables["costos"] = md_table(
         [{"parte": labels[p], "llamadas": n, "errores": e, "costo": c} for p, (n, e, c) in sorted(by_part.items())],
         [("Parte", "parte"), ("Llamadas", "llamadas"), ("Errores (rechazos esperados)", "errores"), ("Costo (USD)", "costo", lambda x: usd(x, 4))],

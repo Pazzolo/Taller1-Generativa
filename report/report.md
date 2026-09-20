@@ -12,7 +12,7 @@ en el código, los casos y este borrador si la política del curso lo pide.
 
 ## 1. Introducción
 
-Se estudió cómo cambia el comportamiento de un modelo de lenguaje cuando se mueve, de a una, cada palanca de inferencia: el muestreo (temperature, top-p, top-k), el contenido del prompt, la forma de la salida, el costo y el esfuerzo de razonamiento. Todo se hizo sobre un único problema, con un único verificador y una única función de inferencia. En total se registraron **1 519 llamadas** a modelos, con **15 errores**, y el gasto en APIs fue de **$0.052**.
+Se estudió cómo cambia el comportamiento de un modelo de lenguaje cuando se mueve, de a una, cada palanca de inferencia: el muestreo (temperature, top-p, top-k), el contenido del prompt, la forma de la salida, el costo y el esfuerzo de razonamiento. Todo se hizo sobre un único problema, con un único verificador y una única función de inferencia. En total se registraron **1 538 llamadas o generaciones** (las 19 de GPT-2 local incluidas), con **15 errores**, y el gasto en APIs fue de **$0.052**.
 
 El resultado que más pesa es una ausencia. En este problema casi ninguna palanca movió la exactitud, porque los modelos ya acertaban todo; lo que sí se movió fue el costo. Además, varias cosas que el enunciado da por supuestas se cayeron al medirlas: un prefijo «seguro» que en GPT-2 no lo era, un nivel de esfuerzo de razonamiento que la API rechaza, y tres parámetros de muestreo que un modelo no acepta. Esas correcciones se cuentan en cada parte, y las limitaciones de todo esto se reúnen en las conclusiones.
 
@@ -32,7 +32,7 @@ Hay que decir de dónde salen: **todos los tickets son sintéticos**, redactados
 
 ## 4. Metodología
 
-**Un solo camino.** Cada llamada pasa por `run_case`: se construye el prompt, se llama al modelo, se verifica la respuesta con `verify_prediction`, se calcula el costo y se agrega una línea a `results.jsonl`. Ese archivo es la fuente de verdad y nunca se sobrescribe; las tablas y gráficas de este informe se generan a partir de él (y este texto, con `scripts/build_report.py`, para no copiar números a mano). Si una llamada falla, queda registrada como error con el mensaje literal y el código HTTP.
+**Un solo camino.** Cada llamada pasa por `run_case`: se construye el prompt, se llama al modelo, se verifica la respuesta con `verify_prediction`, se calcula el costo y se agrega una línea a `results.jsonl`. Ese archivo es la fuente de verdad y nunca se sobrescribe; cada fila trae el modelo y el proveedor, el caso, la corrida, los parámetros (temperature, top-p, top-k, esfuerzo), la variante de prompt, los tokens de entrada, de salida y de razonamiento, la latencia, la salida cruda, si fue correcta y el costo. Las generaciones locales de la Parte 0 (GPT-2) van en el mismo archivo con costo cero: una corrida gratis también es una corrida; las tablas y gráficas de este informe se generan a partir de él (y este texto, con `scripts/build_report.py`, para no copiar números a mano). Si una llamada falla, queda registrada como error con el mensaje literal y el código HTTP.
 
 **Verificador.** Distingue tres fallos: salida que no es JSON, JSON con una categoría fuera del enum, y categoría válida pero incorrecta. Se mide entonces `parse_rate` (JSON parseable), formato válido (categoría dentro del enum) y exactitud, y las tres cosas pueden diferir.
 
@@ -302,6 +302,7 @@ Costo de las llamadas a APIs (todo el proyecto):
 
 | Parte | Llamadas | Errores (rechazos esperados) | Costo (USD) |
 |---|---|---|---|
+| Parte 0 (GPT-2 local) | 19 | 0 | $0.0000 |
 | Parte 1 | 33 | 0 | $0.0108 |
 | Parte 2.a | 80 | 14 | $0.0173 |
 | Parte 2.b | 950 | 0 | $0.0091 |
@@ -309,4 +310,4 @@ Costo de las llamadas a APIs (todo el proyecto):
 | Parte 4.a | 166 | 1 | $0.0040 |
 | Parte 4.b | 90 | 0 | $0.0032 |
 
-Las tablas y gráficas están versionadas en `outputs/`. **`outputs/raw/results.jsonl` no se versiona** (es la fuente de verdad, pero git lo ignora), así que para regenerar las tablas hay que volver a correr los experimentos; los que llaman a APIs son reanudables y baratos. Las salidas crudas de la Parte 0 (`part0*.json`) sí están en el repositorio. No hay claves en el repositorio; se revisó el historial de git con una búsqueda de cadenas con formato de clave y no apareció ninguna.
+Todo está versionado. `outputs/raw/results.jsonl` (una fila por llamada, con las 19 generaciones locales de la Parte 0 incluidas) es la fuente de la que salen las tablas, las gráficas de la Parte 4 y este texto, así que se pueden regenerar sin llamar a ninguna API (`aggregate_results.py`, `generate_plots.py`, `build_report.py`). Volver a producir el archivo desde cero exige volver a correr los experimentos; los que llaman a APIs son reanudables y el costo total fue $0.052. Las salidas de la Parte 0 (`part0*.json`) se reconstruyen a partir de esas filas y, al repetir la corrida, resultaron idénticas. No hay claves en el repositorio; se revisó el historial de git con una búsqueda de cadenas con formato de clave y no apareció ninguna.
