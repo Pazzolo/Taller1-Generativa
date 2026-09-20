@@ -42,38 +42,75 @@ La respuesta se verifica de forma determinista (sin LLM como juez) contra el val
 │   ├── aggregate_results.py  # tablas desde results.jsonl
 │   ├── generate_plots.py     # gráficas de la Parte 4 desde results.jsonl
 │   ├── build_report.py       # genera report/report.md desde report_template.md y los resultados
-│   └── build_pdf.py          # convierte report.md en report/report.pdf (markdown-it + Chrome headless)
+│   ├── build_pdf.py          # convierte report.md en report/report.pdf (markdown-it + Chrome headless)
+│   └── build_docx.py         # convierte report.md en report/report.docx (markdown-it + python-docx)
 ├── outputs/
 │   ├── raw/                  # results.jsonl (fuente de verdad, una fila por llamada) y part0*.json
 │   ├── tables/
 │   └── plots/
-├── report/                   # report_template.md (texto), report.md y report.pdf (generados), part1_notes.json
+├── report/                   # report_template.md (texto), report.md, report.pdf y report.docx (generados), part1_notes.json
 ├── tests/                    # pytest: verificador, dataset, pipeline con mock, precios
 └── notebooks/
 ```
 
 ## Puesta en marcha
 
-Requiere Python 3.11 o 3.12. El entorno se gestiona con [uv](https://docs.astral.sh/uv/).
+Requisitos: Python 3.11 o 3.12 y [uv](https://docs.astral.sh/uv/); una clave de OpenAI (`OPENAI_API_KEY`) para las Partes 1 a 4; [Ollama](https://ollama.com) con `qwen3:1.7b` para el modelo open-weight; y Google Chrome o Chromium solo para generar el PDF. La Parte 0 corre en local (descarga GPT-2, unos 550 MB) y no necesita clave. No hace falta clave de Anthropic.
 
 ```bash
 uv venv --python 3.11
 uv pip install -r requirements.txt
-cp .env.example .env   # completar las claves localmente
+cp .env.example .env        # completar OPENAI_API_KEY (el archivo está en .gitignore)
+ollama pull qwen3:1.7b      # con Ollama en ejecución
 ```
 
 `uv venv` crea `.venv/`; no hace falta activarlo si los comandos se ejecutan con `uv run`. Si hay otro entorno virtual activo (`echo $VIRTUAL_ENV` no vacío), ejecutar `deactivate` antes: sin `pyproject.toml`, uv usa el entorno activo en lugar de `.venv/`.
 
-Para probar solo el Milestone 1 basta una instalación ligera (evita `torch` y `transformers`): `uv pip install pydantic python-dotenv pytest`. Para agregar una dependencia: `uv pip install <paquete>` y anotarla en `requirements.txt`.
+Sin claves ni Ollama también se puede regenerar todo lo que no llama a modelos: `outputs/raw/results.jsonl` está en el repositorio, así que las tablas, las gráficas y el informe se reconstruyen sin ninguna llamada (ver «Reproducir todo»). Para correr solo las pruebas sin descargar `torch` ni `transformers`: `uv pip install pydantic python-dotenv pytest numpy requests matplotlib markdown-it-py python-docx openai anthropic`; las pruebas que necesitan `torch` se omiten. Para agregar una dependencia: `uv pip install <paquete>` y anotarla en `requirements.txt`.
 
 Nunca se guardan API keys en código, notebooks, resultados ni en el repositorio. `.env` está en `.gitignore`.
+
+## Los 10 casos verificables
+
+`data/cases.json` contiene los 10 casos con respuesta verificable automáticamente (los de `"split": "official"`), cada uno con su respuesta esperada en `expected.category` (`billing`, `technical` o `account`). Trae además 5 casos con `"split": "debug"`, solo para pruebas internas: ningún resultado del informe los usa. `data/contaminated_cases.json` trae los 3 casos de la Parte 4.b. Formato de cada caso:
+
+```json
+{"id": "case_01", "split": "official", "ticket": "I was charged twice for the same subscription.", "expected": {"category": "billing"}}
+```
+
+## Reproducir todo
+
+```bash
+uv run pytest                                  # pruebas
+uv run scripts/run_all.py --all --dry-run      # qué se ejecutaría y cuánto costaría, sin llamar a ninguna API
+uv run scripts/run_all.py --all                # las 7 partes: OpenAI, Ollama y GPT-2 local
+uv run scripts/aggregate_results.py            # results.jsonl -> outputs/tables/*.csv
+uv run scripts/generate_plots.py               # gráficas de la Parte 4
+uv run scripts/build_report.py                 # plantilla + resultados -> report/report.md
+uv run scripts/build_pdf.py                    # report/report.pdf
+uv run scripts/build_docx.py                   # report/report.docx
+```
+
+`run_all.py --part X` corre todas las ejecuciones necesarias para reproducir esa parte:
+
+| `--part` | Qué ejecuta | Modelos |
+|---|---|---|
+| `0` | GPT-2 base: distribución, las tres palancas y el límite del modelo base (0.a, 0.b, 0.c) | GPT-2 local |
+| `1` | Los 10 casos, una vez por cada uno de los tres modelos de la tabla del curso | `gpt-4o-mini`, `gpt-5.6-luna`, `qwen3:1.7b` |
+| `2a` | Matriz de exposición: 3 modelos × 3 parámetros, valor bajo y alto, 5 ejecuciones | los tres |
+| `2b` | Barrido temperature × top-p (750 llamadas) y top-k local (200) | `gpt-4o-mini`, `qwen3:1.7b` |
+| `3` | Cuatro variantes de prompt × 10 casos × 5 ejecuciones (200) | `gpt-4o-mini` |
+| `4a` | Barrido de esfuerzo (150) y acertijo de control (15) | `gpt-5.6-luna` |
+| `4b` | Tres casos contaminados en `none` y `xhigh`, y en `low` y `high` | `gpt-5.6-luna` |
+
+Las Partes 0, 2.b, 3, 4.a y 4.b son reanudables: una llamada ya registrada como correcta se omite, así que repetir el comando no vuelve a cobrar. Las Partes 1 y 2.a repiten sus llamadas (unos centavos) y las tablas usan la última fila de cada caso. `--dry-run` cuenta y estima sin llamar a ninguna API y solo aplica a las Partes 2.a a 4.b. El gasto total del proyecto fue de unos 0.05 USD.
 
 ## Uso
 
 ```bash
-uv run scripts/run_all.py --part 1     # una parte
-uv run scripts/run_all.py --all        # todas
-uv run -m src.experiments.part1        # equivalente a la primera
+uv run scripts/run_all.py --part 2b                       # todas las ejecuciones de una parte (tabla de arriba)
+uv run -m src.experiments.part2b --sweep topk             # o un experimento suelto, con sus propias opciones
+uv run -m src.experiments.part1                           # sin opciones usa un mock (sin red ni costo), no los modelos reales
 ```
 
 Los experimentos escriben una fila por llamada en `outputs/raw/results.jsonl`. Las tablas y gráficas se derivan de ese archivo, nunca se copian a mano.
@@ -220,7 +257,7 @@ uv run -m src.experiments.part0            # 0.a, 0.b y 0.c
 uv run -m src.experiments.part0 --only a   # solo una subparte (a, b o c)
 ```
 
-Usa `openai-community/gpt2` en CPU (no una variante instruct). La primera ejecución descarga el modelo (~550 MB); requiere `torch`, `transformers` y `matplotlib`. Es determinista (`SEED = 42`). Cada generación local (0.b y 0.c, 19 en total) es una fila de `results.jsonl` (parte `0`, modelo `base_local`, costo 0.0), igual que una llamada a una API; `part0b.json` y `part0c.json` se reconstruyen a partir de esas filas, y una nueva corrida los deja idénticos. El test 2 de 0.b (`top_k=1`) no solo compara textos: guarda los ids generados y comprueba, con los logits crudos (`output_logits`), que cada token es el argmax de su paso (`greedy_reference_ids` y `top_k_1_ids`). Los pasos de 0.a son pasadas hacia adelante para obtener la distribución (no generaciones) y se guardan en `part0a.json`. Las corridas repetidas omiten lo ya registrado.
+Usa `openai-community/gpt2` en CPU (no una variante instruct). La primera ejecución descarga el modelo (~550 MB); requiere `torch`, `transformers` y `matplotlib`. Es determinista (`SEED = 42`). Cada generación local (0.b y 0.c, 25 en total) es una fila de `results.jsonl` (parte `0`, modelo `base_local`, costo 0.0), igual que una llamada a una API; `part0b.json` y `part0c.json` se reconstruyen a partir de esas filas, y una nueva corrida los deja idénticos. El test 2 de 0.b (`top_k=1`) no solo compara textos: guarda los ids generados y comprueba, con los logits crudos (`output_logits`), que cada token es el argmax de su paso (`greedy_reference_ids` y `top_k_1_ids`). Los pasos de 0.a son pasadas hacia adelante para obtener la distribución (no generaciones) y se guardan en `part0a.json`. Las corridas repetidas omiten lo ya registrado.
 
 **Elección de los prefijos (medida, no supuesta).** El plan sugiere `The capital of France is` como prefijo de alta confianza, pero GPT-2 no lo es: a T=1 su token más probable es `␣the` con 0.085 (`␣Paris` es el 5.º con 0.032) y su entropía es 8.65 bits, casi la de un prefijo incierto (9.33 bits). Por eso el script mide la entropía a T=1 de una lista fija de candidatos (`outputs/tables/part0_prefix_scan.csv`) y elige el de menor entropía: `Thank you very` (0.10 bits, `␣much` con 0.992). El prefijo de menor confianza es el del dominio, `A customer support ticket about an unexpected`.
 
@@ -318,9 +355,12 @@ Costo total de la Parte 4.b: $0.003 (120 llamadas).
 uv run scripts/build_report.py                      # report_template.md -> report.md
 uv run scripts/build_report.py --author "Nombre Apellido" # opcional: reemplaza [nombre] en la portada
 uv run scripts/build_pdf.py                         # report.md -> report.pdf (A4, con figuras y numeración)
+uv run scripts/build_docx.py                        # report.md -> report.docx (Word editable)
 ```
 
 El informe (`report/report.md`, 14 secciones más las respuestas de la Parte 5) **se genera**: el texto vive en `report/report_template.md` y cada número o tabla es una marca (`[[clave]]`, `[[tabla:nombre]]`) que el script rellena desde `outputs/tables/*.csv`, `outputs/raw/part0*.json` y `results.jsonl`, de modo que ninguna cifra se copia a mano. Para cambiar el texto se edita la plantilla, no `report.md`. El script falla si queda una marca sin resolver o si la respuesta 1 de la Parte 5 se sale de 100-150 palabras. Como `results.jsonl` está versionado, el informe se puede regenerar sin llamar a ninguna API.
+
+El `.docx` es un Word nativo (títulos con estilos de encabezado, tablas reales, figuras incrustadas, número de página, español como idioma) para poder editarlo; se genera con `python-docx` y no necesita Chrome. Como sale de `report.md`, hay que editar la plantilla y regenerar, no el `.docx` a mano, o el cambio se pierde al reconstruir.
 
 El PDF se genera con Chrome o Chromium en modo headless (`CHROME_BIN` si no está en una ruta habitual). Chrome a veces no termina tras imprimir, así que el script espera a que el archivo deje de crecer y lo cierra. El informe incluye seis figuras con pie, generadas a partir de las mismas salidas.
 
@@ -338,7 +378,7 @@ El dataset oficial queda congelado: los 10 casos con `"split": "official"` no ca
 
 ## Estado
 
-Los 10 milestones están completos y el informe se revisó contra el enunciado original (`taller-01-foundation-models.pdf`). Pendiente solo lo que depende de quien entrega: quitar los corchetes del nombre en la portada, editar el texto a la voz propia, declarar la asistencia de IA si el curso lo pide y subir el repositorio a GitHub (los commits siguen locales; el remoto `origin` ya está configurado).
+Los 10 milestones están completos y el informe se revisó contra el enunciado original (`taller-01-foundation-models.pdf`). Pendiente solo lo que depende de quien entrega: editar el texto a la voz propia, declarar la asistencia de IA si el curso lo pide y subir el repositorio a GitHub (los commits siguen locales; el remoto `origin` ya está configurado).
 
 - [x] Estructura del proyecto, `config`, `schemas`, `verifier`, `pricing`, `build_base_prompt`, interfaz `ModelRunner`
 - [x] Milestone 1 — `data/cases.json` + verificador + pruebas (41 tests)
