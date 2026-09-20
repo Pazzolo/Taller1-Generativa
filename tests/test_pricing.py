@@ -22,5 +22,5 @@ def test_every_price_row_has_a_verification_date():
     for row in PRICES.values():
         assert row["verified_at"]
         assert row["input_per_million"] >= 0 and row["output_per_million"] >= 0
-        if row["provider"] != "ollama":
+        if row["provider"] not in ("ollama", "transformers"):
             assert row["input_per_million"] > 0 and row["output_per_million"] > 0

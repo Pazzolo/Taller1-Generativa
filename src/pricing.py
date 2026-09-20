@@ -28,6 +28,13 @@ PRICES = {
         "output_per_million": 0.0,
         "verified_at": "n/a (local, sin precio por token)",
     },
+    "gpt2_base": {
+        "provider": "transformers",
+        "model_id": "openai-community/gpt2",
+        "input_per_million": 0.0,
+        "output_per_million": 0.0,
+        "verified_at": "n/a (local, sin precio por token)",
+    },
     "openai_razonamiento": {
         "provider": "openai",
         "model_id": "gpt-5.6-luna",
