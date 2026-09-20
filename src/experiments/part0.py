@@ -1,12 +1,10 @@
 import argparse
 import csv
 import json
-import logging
-import warnings
 
 import numpy as np
 
-from src.config import PLOTS_DIR, RAW_DIR, SEED, TABLES_DIR
+from src.config import PLOTS_DIR, RAW_DIR, RESULTS_PATH, SEED, TABLES_DIR
 from src.distribution import (
     entropy_bits,
     nucleus_size,
@@ -15,11 +13,14 @@ from src.distribution import (
     top_k_indices,
     top_p_indices,
 )
+from src.models.transformers_runner import TransformersRunner
 from src.prompts import build_base_prompt
-from src.schemas import load_cases
-from src.verifier import verify_prediction
+from src.results import call_key, completed_keys, read_results
+from src.runner import run_case
+from src.schemas import Case, Expected, load_cases
 
 MODEL_NAME = "openai-community/gpt2"
+MODEL_KEY = "gpt2_base"  # fila de src/pricing.py: costo 0, modelo local
 # El ejemplo del plan es el primer candidato; se elige el de menor entropía (T=1) medida, no supuesta.
 HIGH_CONFIDENCE_CANDIDATES = (
     "The capital of France is",
@@ -61,38 +62,6 @@ def next_token_logits(tokenizer, model, prefix: str) -> np.ndarray:
 
 def token_text(tokenizer, index: int) -> str:
     return tokenizer.decode([int(index)])
-
-
-class _LogCapture(logging.Handler):
-    def __init__(self):
-        super().__init__(level=logging.WARNING)
-        self.messages: list[str] = []
-
-    def emit(self, record):
-        self.messages.append(record.getMessage())
-
-
-def generate(tokenizer, model, prompt: str, max_new_tokens: int, seed: int | None = None, **kwargs) -> tuple[str, list[str]]:
-    """Devuelve (texto generado sin el prompt, avisos literales de generate(): warnings y log de transformers).
-
-    transformers avisa una sola vez por proceso, así que una llamada repetida puede no devolver el aviso.
-    """
-    import torch
-
-    if seed is not None:
-        torch.manual_seed(seed)
-    inputs = tokenizer(prompt, return_tensors="pt")
-    capture = _LogCapture()
-    hf_logger = logging.getLogger("transformers")
-    hf_logger.addHandler(capture)
-    try:
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            output = model.generate(**inputs, max_new_tokens=max_new_tokens, pad_token_id=tokenizer.eos_token_id, **kwargs)
-    finally:
-        hf_logger.removeHandler(capture)
-    text = tokenizer.decode(output[0, inputs["input_ids"].shape[1]:], skip_special_tokens=True)
-    return text, [str(w.message) for w in caught] + capture.messages
 
 
 def most_confident(entropies: dict[str, float]) -> str:
@@ -163,31 +132,77 @@ def part0b_test3(tokenizer, model, prefixes: dict) -> dict:
     return {"panels": panels}
 
 
-def part0b(tokenizer, model, prefixes: dict) -> dict:
-    prefix = prefixes["low_confidence"]
-    greedy, _ = generate(tokenizer, model, prefix, NEW_TOKENS, do_sample=False)
+def prefix_case(prefix: str) -> Case:
+    """Caso auxiliar: el prefijo hace de «ticket»; los campos de verificación de esas filas no significan nada."""
+    return Case(id="prefix_low_confidence", ticket=prefix, expected=Expected(category="billing"), split="debug")
 
-    test1 = {}
-    for temperature in (0.2, 1.5):
-        text, caught = generate(tokenizer, model, prefix, NEW_TOKENS, do_sample=False, temperature=temperature)
-        test1[str(temperature)] = {"text": text, "warnings": caught}
+
+def generation_plan(base: TransformersRunner, prefixes: dict) -> list[tuple]:
+    """Todas las generaciones locales de las Partes 0.b y 0.c: (experimento, runner, caso, corrida, parámetros, prompt)."""
+    case = prefix_case(prefixes["low_confidence"])
+    greedy = base.clone(do_sample=False, seed=None, max_new_tokens=NEW_TOKENS)
+    plan = [("greedy_reference", greedy, case, 1, {}, "raw_prefix")]
+    plan += [("greedy_ignores_temperature", greedy, case, 1, {"temperature": t}, "raw_prefix") for t in (0.2, 1.5)]
+    plan += [
+        ("top_k_1", base.clone(do_sample=True, seed=SEED + i, max_new_tokens=NEW_TOKENS), case, i + 1,
+         {"temperature": 1.0, "top_p": 1.0, "top_k": 1}, "raw_prefix")
+        for i in range(5)
+    ]
+    plan.append(("degeneration", base.clone(do_sample=False, seed=None, max_new_tokens=DEGENERATION_TOKENS), case, 1, {}, "raw_prefix"))
+    classify = base.clone(do_sample=False, seed=None, max_new_tokens=PART0C_TOKENS)
+    plan += [("base_model_classification", classify, c, 1, {}, "base") for c in load_cases()]
+    return plan
+
+
+def plan_key(experiment, case, run, params, prompt_variant) -> tuple:
+    return call_key({
+        "model_id": MODEL_KEY, "experiment": experiment, "case_id": case.id, "run": run,
+        "temperature": params.get("temperature"), "top_p": params.get("top_p"), "top_k": params.get("top_k"),
+        "effort": None, "prompt_variant": prompt_variant,
+    })
+
+
+def run_generations(base: TransformersRunner, prefixes: dict, only: str | None) -> None:
+    """Cada generación es una fila de results.jsonl (costo 0). Las ya registradas se omiten: la Parte 0 es determinista."""
+    wanted = {"b": {"greedy_reference", "greedy_ignores_temperature", "top_k_1", "degeneration"}, "c": {"base_model_classification"}}
+    experiments = wanted["b"] | wanted["c"] if only is None else wanted[only]
+    done = completed_keys(read_results(RESULTS_PATH))
+    plan = [call for call in generation_plan(base, prefixes) if call[0] in experiments]
+    pending = [call for call in plan if plan_key(call[0], call[2], call[3], call[4], call[5]) not in done]
+    print(f"generaciones locales: {len(plan)} planificadas, {len(plan) - len(pending)} ya registradas, {len(pending)} por correr")
+    for experiment, runner, case, run, params, prompt_variant in pending:
+        run_case(runner, MODEL_KEY, case, part="0", experiment=experiment, run=run, prompt_variant=prompt_variant, **params)
+
+
+def experiment_rows(rows: list[dict], experiment: str) -> list[dict]:
+    """Filas de un experimento de la Parte 0; si una llamada se repitió (caso, corrida) gana la última."""
+    latest = {}
+    for r in rows:
+        if r.get("part") == "0" and r["model_id"] == MODEL_KEY and r["experiment"] == experiment and r["status"] == "ok":
+            latest[(r["case_id"], r["run"], r["temperature"], r["top_p"], r["top_k"])] = r
+    return list(latest.values())
+
+
+def part0b(tokenizer, model, prefixes: dict) -> dict:
+    """Arma part0b.json a partir de las filas de results.jsonl (las generaciones) y de los logits (test 3)."""
+    rows = read_results(RESULTS_PATH)
+    greedy = experiment_rows(rows, "greedy_reference")[0]["raw_output"]
+
+    test1 = {str(r["temperature"]): {"text": r["raw_output"], "warnings": r.get("notices", [])}
+             for r in sorted(experiment_rows(rows, "greedy_ignores_temperature"), key=lambda r: r["temperature"])}
     test1["identical"] = test1["0.2"]["text"] == test1["1.5"]["text"] == greedy
 
-    runs = []
-    for i in range(5):
-        text, _ = generate(tokenizer, model, prefix, NEW_TOKENS, seed=SEED + i, do_sample=True, top_k=1, temperature=1.0, top_p=1.0)
-        runs.append({"seed": SEED + i, "text": text, "equals_greedy": text == greedy})
+    runs = [{"seed": SEED + r["run"] - 1, "text": r["raw_output"], "equals_greedy": r["raw_output"] == greedy}
+            for r in sorted(experiment_rows(rows, "top_k_1"), key=lambda r: r["run"])]
     test2 = {
         "runs": runs,
         "all_identical_to_each_other": len({r["text"] for r in runs}) == 1,
         "all_equal_to_greedy": all(r["equals_greedy"] for r in runs),
     }
-
-    degeneration, _ = generate(tokenizer, model, prefix, DEGENERATION_TOKENS, do_sample=False)
-
+    degeneration = experiment_rows(rows, "degeneration")[0]["raw_output"]
     return {
         "model": MODEL_NAME,
-        "prefix": prefix,
+        "prefix": prefixes["low_confidence"],
         "max_new_tokens": NEW_TOKENS,
         "seed_base": SEED,
         "greedy_reference": greedy,
@@ -198,13 +213,14 @@ def part0b(tokenizer, model, prefixes: dict) -> dict:
     }
 
 
-def part0c(tokenizer, model) -> dict:
+def part0c() -> dict:
+    by_case = {r["case_id"]: r for r in experiment_rows(read_results(RESULTS_PATH), "base_model_classification")}
     records = []
     for case in load_cases():
-        prompt = build_base_prompt(case.ticket)
-        text, _ = generate(tokenizer, model, prompt, PART0C_TOKENS, do_sample=False)
-        verdict = verify_prediction(text, case.expected.model_dump())
-        records.append({"case_id": case.id, "prompt": prompt, "raw_output": text, **verdict})
+        r = by_case[case.id]
+        records.append({"case_id": case.id, "prompt": build_base_prompt(case.ticket), "raw_output": r["raw_output"],
+                        "parse_ok": r["parse_ok"], "valid_schema": r["valid_schema"], "correct": r["correct"],
+                        "predicted": r["predicted"], "expected": r["expected"]})
     return {
         "model": MODEL_NAME,
         "note": "GPT-2 base, decodificación greedy, mismo prompt que la Parte 1 (build_base_prompt).",
@@ -277,11 +293,13 @@ def main() -> None:
     if args.only in (None, "a"):
         write_part0a_outputs(chosen, part0a(tokenizer, model, prefixes))
         print("Parte 0.a: outputs/raw/part0a.json, tablas y gráficas")
+    if args.only in (None, "b", "c"):
+        run_generations(TransformersRunner(tokenizer, model), prefixes, args.only)
     if args.only in (None, "b"):
         write_part0b_outputs(part0b(tokenizer, model, prefixes))
         print("Parte 0.b: outputs/raw/part0b.json y gráfica top-k vs top-p")
     if args.only in (None, "c"):
-        result = part0c(tokenizer, model)
+        result = part0c()
         write_json(result, RAW_DIR / "part0c.json")
         print(f"Parte 0.c: outputs/raw/part0c.json  parse_ok={result['parse_ok']}/{result['cases']}  correct={result['correct']}/{result['cases']}")
 
