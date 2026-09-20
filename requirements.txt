@@ -12,3 +12,4 @@ tiktoken
 # ollama  # solo si se usa el cliente oficial para el modelo open-weight
 pytest
 markdown-it-py
+python-docx
