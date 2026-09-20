@@ -35,7 +35,7 @@ th { background: #f0efec; }
 img { display: block; max-width: 100%; margin: 1em auto .2em; break-inside: avoid; }
 p > em:only-child { display: block; font: italic 8.6pt Helvetica, Arial, sans-serif; color: #444; text-align: left; margin-bottom: 1em; }
 code { font: 8.6pt Menlo, Consolas, monospace; background: #f4f3f0; padding: 0 2px; border-radius: 2px; overflow-wrap: anywhere; }
-pre { background: #f4f3f0; padding: 8px 10px; border-radius: 3px; overflow-x: auto; break-inside: avoid; }
+pre { background: #f4f3f0; padding: 8px 10px; border-radius: 3px; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: auto; font-size: 8pt; }
 pre code { background: none; padding: 0; }
 strong { font-weight: 700; }
 """
