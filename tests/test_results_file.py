@@ -30,8 +30,9 @@ def test_local_generations_are_rows_too_with_cost_zero():
     local = [r for r in OK if r["provider"] in ("ollama", "transformers")]
     assert local and all(r["cost_usd"] == 0.0 for r in local)
     part0 = [r for r in OK if r["part"] == "0"]
-    assert part0 and {r["model_id"] for r in part0} == {"gpt2_base"}
-    assert {"greedy_reference", "greedy_ignores_temperature", "top_k_1", "degeneration", "base_model_classification"} == {r["experiment"] for r in part0}
+    assert part0 and {r["model_id"] for r in part0} == {"base_local"}
+    assert {"greedy_reference", "greedy_ignores_temperature", "top_k_1", "degeneration", "base_model_classification",
+            "greedy_reference_ids", "top_k_1_ids"} == {r["experiment"] for r in part0}
 
 
 def test_failed_calls_keep_the_literal_error_and_status():

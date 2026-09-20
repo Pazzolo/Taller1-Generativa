@@ -46,7 +46,67 @@
       }
     ],
     "all_identical_to_each_other": true,
-    "all_equal_to_greedy": true
+    "all_equal_to_greedy": true,
+    "check_against_distribution": {
+      "steps": 40,
+      "greedy_matches_argmax_every_step": true,
+      "top_k_1_matches_argmax_every_step": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "top_k_1_ids_equal_greedy_ids": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "greedy_ids": [
+        1917,
+        13,
+        198,
+        198,
+        464,
+        6491,
+        1104,
+        7846,
+        546,
+        281,
+        10059,
+        1917,
+        13,
+        198,
+        198,
+        464,
+        6491,
+        1104,
+        7846,
+        546,
+        281,
+        10059,
+        1917,
+        13,
+        198,
+        198,
+        464,
+        6491,
+        1104,
+        7846,
+        546,
+        281,
+        10059,
+        1917,
+        13,
+        198,
+        198,
+        464,
+        6491,
+        1104
+      ]
+    }
   },
   "test3_top_k_vs_top_p": {
     "panels": [
