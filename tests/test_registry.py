@@ -16,7 +16,9 @@ def test_get_runner_builds_the_right_class_and_model(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     expected = {
         "propietario_economico": (OpenAIRunner, "gpt-4o-mini"),
-        "propietario_grande": (OpenAIRunner, "gpt-5.5"),
+        "propietario_grande": (AnthropicRunner, "claude-opus-4-8"),
+        "openai_razonamiento": (OpenAIRunner, "gpt-5.6-luna"),
+        "extra_gpt55": (OpenAIRunner, "gpt-5.5"),
         "propietario_balanceado": (AnthropicRunner, "claude-sonnet-4-6"),
         "open_weight_pequeno": (OllamaRunner, "qwen3:1.7b"),
     }

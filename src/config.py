@@ -16,6 +16,10 @@ PART1_NOTES_PATH = ROOT / "report" / "part1_notes.json"
 
 SEED = 42
 
+# Los tres modelos de las Partes 1 y 2.a, elegidos por su id de la tabla semestral del curso.
+# Con la clave de OpenAI: la ranura «grande» la cubre openai_razonamiento (anexo del enunciado, Parte 1).
+COURSE_MODELS = ("propietario_economico", "openai_razonamiento", "open_weight_pequeno")
+
 Category = Literal["billing", "technical", "account"]
 CATEGORIES: tuple[str, ...] = get_args(Category)
 

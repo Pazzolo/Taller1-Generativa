@@ -5,7 +5,7 @@ from src.pricing import PRICES, cost_usd
 
 def test_cost_matches_manual_calculation():
     assert cost_usd("propietario_economico", 1_000_000, 1_000_000) == pytest.approx(0.15 + 0.60)
-    assert cost_usd("propietario_grande", 2_000, 500) == pytest.approx(2_000 * 5 / 1e6 + 500 * 30 / 1e6)
+    assert cost_usd("propietario_grande", 2_000, 500) == pytest.approx(2_000 * 5 / 1e6 + 500 * 25 / 1e6)
 
 
 def test_missing_token_counts_yield_none_not_a_guess():

@@ -1,4 +1,5 @@
 import logging
+import types
 
 import pytest
 
@@ -20,19 +21,25 @@ class FakeTokenizer:
 
 
 class FakeModel:
-    def __init__(self, log_message=None):
+    def __init__(self, log_message=None, argmax_token=9):
         self.calls = []
         self.log_message = log_message
+        self.argmax_token = argmax_token
 
     def generate(self, input_ids=None, attention_mask=None, max_new_tokens=0, pad_token_id=None, **kwargs):
         self.calls.append({"max_new_tokens": max_new_tokens, **kwargs})
         if self.log_message:
             logging.getLogger("transformers").warning(self.log_message)
-        return torch.cat([input_ids, torch.full((1, max_new_tokens), 9)], dim=1)
+        sequences = torch.cat([input_ids, torch.full((1, max_new_tokens), 9)], dim=1)
+        if kwargs.get("return_dict_in_generate"):
+            step = torch.zeros(1, 20)
+            step[0, self.argmax_token] = 5.0
+            return types.SimpleNamespace(sequences=sequences, logits=tuple(step.clone() for _ in range(max_new_tokens)))
+        return sequences
 
 
 def runner(**options):
-    model = FakeModel(options.pop("log_message", None))
+    model = FakeModel(options.pop("log_message", None), options.pop("argmax_token", 9))
     return TransformersRunner(FakeTokenizer(), model, **options), model
 
 
@@ -86,9 +93,27 @@ def test_library_notices_are_captured():
 def test_a_local_generation_becomes_a_free_row_in_the_same_format(tmp_path):
     r, _ = runner(max_new_tokens=5, log_message="temperature ignored")
     path = tmp_path / "results.jsonl"
-    record = run_case(r, "gpt2_base", load_cases()[0], part="0", experiment="base_model_classification", results_path=path)
+    record = run_case(r, "base_local", load_cases()[0], part="0", experiment="base_model_classification", results_path=path)
     assert record["cost_usd"] == 0.0
-    assert (record["part"], record["model_id"], record["provider"], record["model_name"]) == ("0", "gpt2_base", "transformers", "openai-community/gpt2")
+    assert (record["part"], record["model_id"], record["provider"], record["model_name"]) == ("0", "base_local", "transformers", "openai-community/gpt2")
     assert (record["input_tokens"], record["output_tokens"]) == (3, 5)
     assert record["notices"] == ["temperature ignored"]
     assert record["parse_ok"] is False and record["correct"] is False
+
+
+def test_record_ids_returns_the_generated_ids_and_checks_each_step_against_the_argmax():
+    r, model = runner(max_new_tokens=3, record_ids=True)
+    out = r.generate("hello")
+    assert out["extras"] == {"output_ids": [9, 9, 9], "matches_argmax": True}
+    assert model.calls[0]["return_dict_in_generate"] is True and model.calls[0]["output_logits"] is True
+
+
+def test_a_token_that_is_not_the_argmax_is_flagged():
+    r, _ = runner(max_new_tokens=3, record_ids=True, argmax_token=4)
+    assert r.generate("hello")["extras"]["matches_argmax"] is False
+
+
+def test_ids_are_not_requested_by_default():
+    r, model = runner(max_new_tokens=2)
+    out = r.generate("hello")
+    assert out["extras"] == {} and "return_dict_in_generate" not in model.calls[0]
