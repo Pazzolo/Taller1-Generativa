@@ -85,3 +85,11 @@ def test_the_report_uses_the_course_table_models_and_not_the_exploratory_one_in_
 def test_part_1_table_carries_the_price_verification_date_of_each_row(built):
     _, tables, _ = built
     assert "Precio verificado" in tables["part1"] and "2026-08-26" in tables["part1"] and "2026-09-18" in tables["part1"]
+
+
+def test_the_opening_comment_is_closed_once_so_no_stray_text_shows_in_the_pdf(built):
+    """Un `-->` dentro del comentario inicial lo cierra antes de tiempo y el resto se vería en la portada."""
+    _, _, text = built
+    head = text.split("\n# ", 1)[0]
+    assert head.count("<!--") == head.count("-->") == 1, head
+    assert head.strip().startswith("<!--") and head.strip().endswith("-->")

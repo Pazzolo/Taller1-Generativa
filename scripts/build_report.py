@@ -87,7 +87,7 @@ def words(text: str) -> int:
 
 
 def latest_case_rows(rows: list[dict], **match) -> list[dict]:
-    """Última fila por (caso, corrida, parámetros) entre las que cumplen `match`."""
+    """Última fila por (caso, ejecución, parámetros) entre las que cumplen `match`."""
     latest = {}
     for r in rows:
         if all(r.get(k) == v for k, v in match.items()):
@@ -172,7 +172,7 @@ def build_values() -> tuple[dict, dict]:
     tables["anexo_a"] = "\n\n".join([
         f"**A.1 — `do_sample=False`, temperature 0.2** ({b['max_new_tokens']} tokens nuevos):\n\n{fenced(t1['0.2']['text'])}",
         f"**A.2 — `do_sample=False`, temperature 1.5:**\n\n{fenced(t1['1.5']['text'])}",
-        f"**A.3 — `do_sample=True`, `top_k=1`, semilla {t2['runs'][0]['seed']}** (las otras cuatro corridas, con semillas {t2['runs'][1]['seed']}–{t2['runs'][-1]['seed']}, dieron exactamente la misma salida; los ids generados coinciden con los de greedy en {v['chk_ids']} corridas):\n\n{fenced(t2['runs'][0]['text'])}",
+        f"**A.3 — `do_sample=True`, `top_k=1`, semilla {t2['runs'][0]['seed']}** (las otras cuatro ejecuciones, con semillas {t2['runs'][1]['seed']}–{t2['runs'][-1]['seed']}, dieron exactamente la misma salida; los ids generados coinciden con los de greedy en {v['chk_ids']} ejecuciones):\n\n{fenced(t2['runs'][0]['text'])}",
         f"**A.4 — Degeneración: `do_sample=False`, {b['test4_degeneration']['max_new_tokens']} tokens, sin editar:**\n\n{fenced(loop)}",
     ])
     c = read_json("part0c.json")
@@ -266,7 +266,7 @@ def build_values() -> tuple[dict, dict]:
     for variant in ("zero_shot", "few_shot", "cot", "structured"):
         cand = latest_case_rows([x for x in rows if x["part"] == "3" and x["status"] == "ok"], model_id="propietario_economico", prompt_variant=variant, case_id="case_01")
         r = sorted(cand, key=lambda x: x["run"])[0]
-        parts.append(f"**C.{len(parts) + 1} — `{variant}`** (caso `case_01`, corrida {r['run']}; {r['input_tokens']} tokens de entrada, {r['output_tokens']} de salida):\n\n{fenced(r['raw_output'])}")
+        parts.append(f"**C.{len(parts) + 1} — `{variant}`** (caso `case_01`, ejecución {r['run']}; {r['input_tokens']} tokens de entrada, {r['output_tokens']} de salida):\n\n{fenced(r['raw_output'])}")
     tables["anexo_c"] = "\n\n".join(parts)
 
     # --- Parte 4.a
@@ -278,7 +278,7 @@ def build_values() -> tuple[dict, dict]:
         ("Salida total", "total_output_tokens_mean", lambda x: num(x, 1) if x else "—"), ("Latencia media (s)", "latency_mean", lambda x: num(x) if x else "—"),
         ("Costo por llamada", "cost_usd_per_call", lambda x: usd(x, 7) if x else "—"), ("Costo del nivel", "cost_usd_total", lambda x: usd(x, 6) if x else "—")])
     ctrl = read_csv("part4a_control")
-    tables["part4a_control"] = md_table(ctrl, [("Esfuerzo", "effort"), ("Corridas", "calls"), ("Razonamiento (media)", "reasoning_tokens_mean", lambda x: num(x, 1)),
+    tables["part4a_control"] = md_table(ctrl, [("Esfuerzo", "effort"), ("Ejecuciones", "calls"), ("Razonamiento (media)", "reasoning_tokens_mean", lambda x: num(x, 1)),
                                                 ("Salida total (media)", "total_output_tokens_mean", lambda x: num(x, 1)), ("Respuesta correcta", "answer_correct_rate", num)])
     sweep_rows = [r for lvl in ("none", "low", "medium", "high", "xhigh") for r in latest_rows(rows, "openai_razonamiento", "reasoning_effort", lvl) if r["status"] == "ok"]
     reasoned = [r for r in sweep_rows if r["reasoning_tokens"]]
@@ -314,7 +314,7 @@ def build_values() -> tuple[dict, dict]:
     # --- Parte 4.b
     part4b = read_csv("part4b")
     tables["part4b"] = md_table(part4b, [
-        ("Caso", "case_id"), ("Trampa", "trap", nombre), ("Esfuerzo", "effort"), ("Corridas", "runs"), ("Aciertos", "correct_rate", num),
+        ("Caso", "case_id"), ("Trampa", "trap", nombre), ("Esfuerzo", "effort"), ("Ejecuciones", "runs"), ("Aciertos", "correct_rate", num),
         ("Razonamiento (media)", "reasoning_tokens_mean", lambda x: num(x, 1)), ("Razonamiento (máx.)", "reasoning_tokens_max")])
     calls4b = sum(int(r["runs"]) for r in part4b)
     right4b = sum(float(r["correct_rate"]) * (int(r["runs"]) - int(r["errors"])) for r in part4b)
