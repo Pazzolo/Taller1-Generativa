@@ -75,6 +75,7 @@ PROMPT_BUILDERS = {
     "cot": cot_prompt,
     "structured": structured_prompt,
     "puzzle": build_puzzle_prompt,
+    "raw_prefix": lambda ticket: ticket,  # Parte 0: el "ticket" es el prefijo que continúa el modelo base
 }
 
 STRUCTURED_SCHEMAS = {"structured": CATEGORY_SCHEMA}
