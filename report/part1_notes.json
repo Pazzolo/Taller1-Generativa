@@ -1,5 +1,5 @@
 {
-  "propietario_grande": "JSON válido en los 10 casos, compacto y sin espacio tras los dos puntos. De ~23 tokens de salida, 9-10 son de razonamiento y se facturan a precio de salida. Es un modelo de razonamiento usado en lugar de claude-opus-4-8 de la tabla del curso.",
-  "propietario_economico": "JSON válido en los 10 casos, sin tokens de razonamiento y con la salida más corta (6 tokens). Fue el más barato de los modelos de pago.",
-  "open_weight_pequeno": "JSON válido en los 10 casos con el razonamiento desactivado (think: false). Corre en local: la latencia no incluye red y el costo 0 no cuenta el hardware. La primera llamada del modelo tardó 3.55 s por la carga en memoria; esa fila no entra en la tabla porque se usa la última fila por caso."
+  "propietario_economico": "JSON válido en los 10 casos, con el formato del prompt, sin texto adicional ni categorías inventadas; 6 tokens de salida por llamada, sin razonamiento. Fue el más barato de los modelos de pago.",
+  "openai_razonamiento": "JSON válido en los 10 casos, compacto (sin espacio tras los dos puntos), sin texto adicional ni categorías inventadas; 8 tokens de salida y 0 tokens de razonamiento con el esfuerzo por defecto: en esta tarea no razonó. Es la fila de razonamiento del curso, usada aquí como la ranura «grande» con la clave de OpenAI.",
+  "open_weight_pequeno": "JSON válido en los 10 casos con el razonamiento desactivado (think: false), sin texto adicional. Corre en local: la latencia no incluye red y el costo 0 no cuenta el hardware. La primera llamada tardó 3.55 s por la carga del modelo en memoria; esa fila no entra en la tabla porque se usa la última fila por caso."
 }

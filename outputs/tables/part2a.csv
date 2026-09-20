@@ -1,10 +1,10 @@
 model,parameter,declared,observed_state,http_status,error_message,verified_at,low_value,high_value,distinct_low,distinct_high,runs_low,runs_high
-propietario_grande,temperature,no documentado,rejected,400,"Error code: 400 - {'error': {'message': ""Unsupported value: 'temperature' does not support 0.0 with this model. Only the default (1) value is supported."", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}",2026-09-19,0.0,2.0,0,0,1,1
-propietario_grande,top_p,no documentado,rejected,400,"Error code: 400 - {'error': {'message': ""Unsupported parameter: 'top_p' is not supported with this model."", 'type': 'invalid_request_error', 'param': 'top_p', 'code': 'unsupported_parameter'}}",2026-09-19,0.01,1.0,0,5,1,5
-propietario_grande,top_k,no,rejected,400,"Error code: 400 - {'error': {'message': ""Unknown parameter: 'top_k'. Did you mean 'top_p'?"", 'type': 'invalid_request_error', 'param': 'top_k', 'code': 'unknown_parameter'}}",2026-09-19,1,100,0,0,1,1
-propietario_economico,temperature,sí,accepted_and_acts,,,2026-09-19,0.0,2.0,1,5,5,5
-propietario_economico,top_p,sí,accepted_and_acts,,,2026-09-19,0.01,1.0,1,5,5,5
+propietario_economico,temperature,si,accepted_and_acts,,,2026-09-19,0.0,2.0,1,5,5,5
+propietario_economico,top_p,si,accepted_and_acts,,,2026-09-19,0.01,1.0,1,5,5,5
 propietario_economico,top_k,no,rejected,400,"Error code: 400 - {'error': {'message': 'Unrecognized request argument supplied: top_k', 'type': 'invalid_request_error', 'param': None, 'code': None}}",2026-09-19,1,100,0,0,1,1
-open_weight_pequeno,temperature,sí,accepted_and_acts,,,2026-09-19,0.0,2.0,1,5,5,5
-open_weight_pequeno,top_p,sí,accepted_and_acts,,,2026-09-19,0.01,1.0,1,4,5,5
-open_weight_pequeno,top_k,sí,accepted_and_acts,,,2026-09-19,1,100,1,3,5,5
+openai_razonamiento,temperature,no_en_esta_fila,rejected,400,"Error code: 400 - {'error': {'message': ""Unsupported value: 'temperature' does not support 0.0 with this model. Only the default (1) value is supported."", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}",2026-09-20,0.0,2.0,0,0,1,1
+openai_razonamiento,top_p,no_en_esta_fila,rejected,400,"Error code: 400 - {'error': {'message': ""Unsupported parameter: 'top_p' is not supported with this model."", 'type': 'invalid_request_error', 'param': 'top_p', 'code': 'unsupported_parameter'}}",2026-09-20,0.01,1.0,0,5,1,5
+openai_razonamiento,top_k,no,rejected,400,"Error code: 400 - {'error': {'message': ""Unknown parameter: 'top_k'. Did you mean 'top_p'?"", 'type': 'invalid_request_error', 'param': 'top_k', 'code': 'unknown_parameter'}}",2026-09-20,1,100,0,0,1,1
+open_weight_pequeno,temperature,si,accepted_and_acts,,,2026-09-19,0.0,2.0,1,5,5,5
+open_weight_pequeno,top_p,si,accepted_and_acts,,,2026-09-19,0.01,1.0,1,4,5,5
+open_weight_pequeno,top_k,si,accepted_and_acts,,,2026-09-19,1,100,1,3,5,5
