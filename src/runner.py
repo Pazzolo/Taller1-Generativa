@@ -79,6 +79,7 @@ def run_case(
             raw_output=output["text"],
             final_answer=final_answer,
             **({"notices": output["notices"]} if output.get("notices") else {}),
+            **output.get("extras", {}),
             **verify_prediction(final_answer, expected),
             cost_usd=(
                 cost_usd(model_key, output["input_tokens"], output["output_tokens"])

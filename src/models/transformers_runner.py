@@ -21,12 +21,16 @@ class TransformersRunner(ModelRunner):
     generate() para que quede registrado que se ignora (y el aviso de la librería, en `notices`).
     """
 
-    def __init__(self, tokenizer, model, *, do_sample: bool = False, seed: int | None = None, max_new_tokens: int = 60):
+    def __init__(
+        self, tokenizer, model, *, do_sample: bool = False, seed: int | None = None, max_new_tokens: int = 60,
+        record_ids: bool = False,
+    ):
         self.tokenizer = tokenizer
         self.model = model
         self.do_sample = do_sample
         self.seed = seed
         self.max_new_tokens = max_new_tokens
+        self.record_ids = record_ids
 
     @classmethod
     def from_pretrained(cls, model_name: str, **options) -> "TransformersRunner":
@@ -36,7 +40,7 @@ class TransformersRunner(ModelRunner):
 
     def clone(self, **options) -> "TransformersRunner":
         """Otro runner sobre el mismo modelo ya cargado, con opciones distintas."""
-        merged = {"do_sample": self.do_sample, "seed": self.seed, "max_new_tokens": self.max_new_tokens, **options}
+        merged = {"do_sample": self.do_sample, "seed": self.seed, "max_new_tokens": self.max_new_tokens, "record_ids": self.record_ids, **options}
         return TransformersRunner(self.tokenizer, self.model, **merged)
 
     def generate(
@@ -56,6 +60,9 @@ class TransformersRunner(ModelRunner):
             torch.manual_seed(self.seed)
         inputs = self.tokenizer(prompt, return_tensors="pt")
         kwargs = {"do_sample": self.do_sample}
+        if self.record_ids:
+            # Los logits crudos permiten comprobar cada paso contra la distribución, no solo comparar textos.
+            kwargs.update(return_dict_in_generate=True, output_logits=True)
         for name, value in (("temperature", temperature), ("top_p", top_p), ("top_k", top_k)):
             if value is not None:
                 kwargs[name] = value
@@ -76,7 +83,16 @@ class TransformersRunner(ModelRunner):
             hf_logger.removeHandler(capture)
 
         prompt_length = inputs["input_ids"].shape[1]
-        new_ids = output[0, prompt_length:]
+        extras = {}
+        if self.record_ids:
+            sequences, step_logits = output.sequences, output.logits
+            new_ids = sequences[0, prompt_length:]
+            extras = {
+                "output_ids": [int(i) for i in new_ids],
+                "matches_argmax": all(int(torch.argmax(step[0])) == int(new_ids[i]) for i, step in enumerate(step_logits)),
+            }
+        else:
+            new_ids = output[0, prompt_length:]
         return {
             "text": self.tokenizer.decode(new_ids, skip_special_tokens=True),
             "input_tokens": int(prompt_length),
@@ -85,4 +101,5 @@ class TransformersRunner(ModelRunner):
             "latency_seconds": latency,
             "raw_response": {},
             "notices": [str(w.message) for w in caught] + capture.messages,
+            "extras": extras,
         }
