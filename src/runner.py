@@ -78,6 +78,7 @@ def run_case(
             latency_seconds=output["latency_seconds"],
             raw_output=output["text"],
             final_answer=final_answer,
+            **({"notices": output["notices"]} if output.get("notices") else {}),
             **verify_prediction(final_answer, expected),
             cost_usd=(
                 cost_usd(model_key, output["input_tokens"], output["output_tokens"])
