@@ -44,11 +44,11 @@ def load_notes(path: Path) -> dict:
         return json.load(f)
 
 
-def part1_table(rows: list[dict], notes: dict | None = None) -> list[dict]:
+def part1_table(rows: list[dict], notes: dict | None = None, models: tuple[str, ...] | None = None) -> list[dict]:
     notes = notes or {}
     part1 = [r for r in rows if r.get("part") == "1" and r.get("model_id") in PRICES]
     table = []
-    for model_key in PRICES:
+    for model_key in (models or PRICES):
         model_rows = latest_per_case([r for r in part1 if r["model_id"] == model_key])
         if not model_rows:
             continue

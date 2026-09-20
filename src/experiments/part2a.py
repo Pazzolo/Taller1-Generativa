@@ -1,13 +1,13 @@
 import argparse
 
-from src.config import RESULTS_PATH, TABLES_DIR
+from src.config import COURSE_MODELS, RESULTS_PATH, TABLES_DIR
 from src.exposure import PARAMETERS, part2a_table, write_part2a_csv
 from src.models.registry import get_runner
 from src.results import read_results
 from src.runner import run_case
 from src.schemas import Case, Expected
 
-MODELS = ("propietario_grande", "propietario_economico", "open_weight_pequeno")
+MODELS = COURSE_MODELS
 DEFAULT_RUNS = 5
 PROBE_CASE = Case(
     id="probe_01",

@@ -80,7 +80,7 @@ def test_table_has_one_row_per_tested_model_and_parameter():
 
 def test_table_reports_declared_observed_and_date():
     (entry,) = part2a_table(make_rows())
-    assert entry["declared"] == "sí"
+    assert entry["declared"] == "si"
     assert entry["observed_state"] == "accepted_and_acts"
     assert entry["verified_at"] == "2026-09-19"
     assert (entry["low_value"], entry["high_value"]) == PARAMETERS["temperature"]

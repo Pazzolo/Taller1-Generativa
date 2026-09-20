@@ -1,5 +1,5 @@
 from src.aggregation import write_csv
-from src.pricing import PRICES
+from src.config import COURSE_MODELS
 
 PARAMETERS = {
     "temperature": (0.0, 2.0),
@@ -8,10 +8,13 @@ PARAMETERS = {
 }
 
 # "Declarado" = lo que el proveedor documenta. None de esto sustituye a la observación.
+# Campo parametros_expuestos de la tabla semestral (anexo del enunciado, 2026-09-18), con su vocabulario:
+# si, no, no_en_esta_fila, solo_valor_por_defecto, sin_verificar.
 DECLARED = {
-    "propietario_economico": {"temperature": "sí", "top_p": "sí", "top_k": "no"},
-    "propietario_grande": {"temperature": "no documentado", "top_p": "no documentado", "top_k": "no"},
-    "open_weight_pequeno": {"temperature": "sí", "top_p": "sí", "top_k": "sí"},
+    "propietario_economico": {"temperature": "si", "top_p": "si", "top_k": "no"},
+    "openai_razonamiento": {"temperature": "no_en_esta_fila", "top_p": "no_en_esta_fila", "top_k": "no"},
+    "open_weight_pequeno": {"temperature": "si", "top_p": "si", "top_k": "si"},
+    "extra_gpt55": {"temperature": "no documentado", "top_p": "no documentado", "top_k": "no documentado"},
 }
 
 REJECTION_STATUSES = {400, 422}
@@ -68,10 +71,10 @@ def assess(low_rows: list[dict], high_rows: list[dict]) -> dict:
     }
 
 
-def part2a_table(rows: list[dict]) -> list[dict]:
+def part2a_table(rows: list[dict], models: tuple[str, ...] = COURSE_MODELS) -> list[dict]:
     rows = [r for r in rows if r.get("part") == "2a"]
     table = []
-    for model_key in PRICES:
+    for model_key in models:
         for parameter, (low, high) in PARAMETERS.items():
             def setting(value):
                 return latest_batch(

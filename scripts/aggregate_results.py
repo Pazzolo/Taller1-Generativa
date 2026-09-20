@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.aggregation import PART1_COLUMNS, PART3_COLUMNS, load_notes, part1_table, part3_table, write_csv
-from src.config import PART1_NOTES_PATH, TABLES_DIR
+from src.config import COURSE_MODELS, PART1_NOTES_PATH, TABLES_DIR
 from src.experiments.part3 import MODEL as PART3_MODEL, VARIANTS as PART3_VARIANTS
 from src.config import CONTAMINATED_PATH
 from src.contamination import CONTAMINATED_COLUMNS, RUN_COLUMNS, contaminated_table, runs_table
@@ -31,7 +31,7 @@ def main() -> None:
     contaminated = load_cases(CONTAMINATED_PATH, split="contaminated")
     write_csv(contaminated_table(rows, PART4B_MODEL, contaminated, PART4B_LEVELS), TABLES_DIR / "part4b.csv", CONTAMINATED_COLUMNS)
     write_csv(runs_table(rows, PART4B_MODEL, contaminated, PART4B_LEVELS), TABLES_DIR / "part4b_runs.csv", RUN_COLUMNS)
-    table = part1_table(rows, load_notes(PART1_NOTES_PATH))
+    table = part1_table(rows, load_notes(PART1_NOTES_PATH), COURSE_MODELS)
     path = TABLES_DIR / "part1.csv"
     write_csv(table, path)
 
