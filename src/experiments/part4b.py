@@ -9,9 +9,11 @@ from src.runner import run_case
 from src.schemas import load_cases
 
 MODEL = "openai_razonamiento"
-LEVELS = ("low", "high")
-EXTRA_LEVELS = ("xhigh",)  # comprobación adicional con el esfuerzo máximo aceptado; el plan pide solo low y high
-REPORT_LEVELS = LEVELS + EXTRA_LEVELS
+# El enunciado pide «el nivel más bajo y el más alto de esfuerzo»: para openai_razonamiento son none y xhigh
+# (max lo rechaza la API). low y high se corrieron antes, por el plan inicial, y se dejan como niveles intermedios.
+LEVELS = ("none", "xhigh")
+EXTRA_LEVELS = ("low", "high")
+REPORT_LEVELS = ("none", "low", "high", "xhigh")
 RUNS = 10
 MAX_OUTPUT_TOKENS = 16000
 
