@@ -20,7 +20,7 @@ from src.runner import run_case
 from src.schemas import Case, Expected, load_cases
 
 MODEL_NAME = "openai-community/gpt2"
-MODEL_KEY = "gpt2_base"  # fila de src/pricing.py: costo 0, modelo local
+MODEL_KEY = "base_local"  # fila de la tabla del curso: costo 0, modelo local
 # El ejemplo del plan es el primer candidato; se elige el de menor entropía (T=1) medida, no supuesta.
 HIGH_CONFIDENCE_CANDIDATES = (
     "The capital of France is",
@@ -148,6 +148,13 @@ def generation_plan(base: TransformersRunner, prefixes: dict) -> list[tuple]:
          {"temperature": 1.0, "top_p": 1.0, "top_k": 1}, "raw_prefix")
         for i in range(5)
     ]
+    ids_greedy = base.clone(do_sample=False, seed=None, max_new_tokens=NEW_TOKENS, record_ids=True)
+    plan.append(("greedy_reference_ids", ids_greedy, case, 1, {}, "raw_prefix"))
+    plan += [
+        ("top_k_1_ids", base.clone(do_sample=True, seed=SEED + i, max_new_tokens=NEW_TOKENS, record_ids=True), case, i + 1,
+         {"temperature": 1.0, "top_p": 1.0, "top_k": 1}, "raw_prefix")
+        for i in range(5)
+    ]
     plan.append(("degeneration", base.clone(do_sample=False, seed=None, max_new_tokens=DEGENERATION_TOKENS), case, 1, {}, "raw_prefix"))
     classify = base.clone(do_sample=False, seed=None, max_new_tokens=PART0C_TOKENS)
     plan += [("base_model_classification", classify, c, 1, {}, "base") for c in load_cases()]
@@ -164,7 +171,8 @@ def plan_key(experiment, case, run, params, prompt_variant) -> tuple:
 
 def run_generations(base: TransformersRunner, prefixes: dict, only: str | None) -> None:
     """Cada generación es una fila de results.jsonl (costo 0). Las ya registradas se omiten: la Parte 0 es determinista."""
-    wanted = {"b": {"greedy_reference", "greedy_ignores_temperature", "top_k_1", "degeneration"}, "c": {"base_model_classification"}}
+    wanted = {"b": {"greedy_reference", "greedy_ignores_temperature", "top_k_1", "degeneration", "greedy_reference_ids", "top_k_1_ids"},
+              "c": {"base_model_classification"}}
     experiments = wanted["b"] | wanted["c"] if only is None else wanted[only]
     done = completed_keys(read_results(RESULTS_PATH))
     plan = [call for call in generation_plan(base, prefixes) if call[0] in experiments]
@@ -198,6 +206,15 @@ def part0b(tokenizer, model, prefixes: dict) -> dict:
         "runs": runs,
         "all_identical_to_each_other": len({r["text"] for r in runs}) == 1,
         "all_equal_to_greedy": all(r["equals_greedy"] for r in runs),
+    }
+    greedy_ids = experiment_rows(rows, "greedy_reference_ids")[0]
+    id_runs = sorted(experiment_rows(rows, "top_k_1_ids"), key=lambda r: r["run"])
+    test2["check_against_distribution"] = {
+        "steps": len(greedy_ids["output_ids"]),
+        "greedy_matches_argmax_every_step": greedy_ids["matches_argmax"],
+        "top_k_1_matches_argmax_every_step": [r["matches_argmax"] for r in id_runs],
+        "top_k_1_ids_equal_greedy_ids": [r["output_ids"] == greedy_ids["output_ids"] for r in id_runs],
+        "greedy_ids": greedy_ids["output_ids"],
     }
     degeneration = experiment_rows(rows, "degeneration")[0]["raw_output"]
     return {
